@@ -1,0 +1,115 @@
+// Shared definition of where the SDK gets its normative inputs from.
+//
+// The SDK must not hand-copy the protocol's constants and schema: a second
+// definition is a second truth, and the whole point of separating the protocol
+// was to have exactly one. So the files are copied from the protocol repository
+// and their hashes are recorded, which lets `check-drift` prove the copy still
+// matches the original instead of trusting that nobody forgot to re-sync.
+
+import { createHash } from 'node:crypto';
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+// This file lives at <sdk>/scripts/lib/, so the SDK root is two levels up.
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+export const SDK_ROOT = path.resolve(HERE, '..', '..');
+// The sync manifest lives at the repository root, not under src/. It is
+// repository bookkeeping, not source: keeping it out of the compiled tree means
+// the compiler never copies it into dist/ and it can never end up inside the
+// published tarball, where it would have no meaning and could carry a path from
+// whoever last ran the sync.
+export const MANIFEST_PATH = path.join(SDK_ROOT, 'SOURCE.json');
+
+/**
+ * The normative files the SDK embeds, plus the covenant artifacts its tests
+ * build transactions against.
+ *
+ * `scope: 'src'` files are part of the published package: the SDK genuinely
+ * needs the constants and the schema at runtime. `scope: 'test'` files are
+ * test-only -- the artifacts are the *input* for building transactions, not
+ * something a consumer of the SDK needs, so they are kept out of the published
+ * `files` list. Both come from the same repository, so there is still one copy
+ * of each artifact in the world.
+ */
+export const SYNCED_FILES = [
+  {
+    source: 'protocol/constants.json',
+    dest: 'src/protocol/constants.json',
+    scope: 'src',
+    label: 'protocol constants',
+  },
+  {
+    source: 'protocol/schemas/repid-fact.schema.json',
+    dest: 'src/protocol/schemas/repid-fact.schema.json',
+    scope: 'src',
+    label: 'fact JSON Schema',
+  },
+  {
+    source: 'protocol/protocol-version.json',
+    dest: 'src/protocol/protocol-version.json',
+    scope: 'src',
+    label: 'protocol version',
+  },
+  {
+    source: 'artifacts/identity_genesis.json',
+    dest: 'test/fixtures/identity_genesis.json',
+    scope: 'test',
+    label: 'identity genesis artifact',
+  },
+  {
+    source: 'artifacts/identity_vault.json',
+    dest: 'test/fixtures/identity_vault.json',
+    scope: 'test',
+    label: 'identity vault artifact',
+  },
+  {
+    source: 'artifacts/receipt_genesis.json',
+    dest: 'test/fixtures/receipt_genesis.json',
+    scope: 'test',
+    label: 'receipt genesis artifact',
+  },
+];
+
+/**
+ * Resolves the protocol repository. Defaults to the sibling checkout, which is
+ * how the three repositories sit on a contributor's machine; overridable so CI
+ * and anyone with a different layout can point at it.
+ */
+export function resolveProtocolRepo() {
+  const fromEnv = process.env.REPID_PROTOCOL_REPO;
+  if (fromEnv) return path.resolve(fromEnv);
+  return path.resolve(SDK_ROOT, '..', 'repid-protocol');
+}
+
+export function sha256(buf) {
+  return createHash('sha256').update(buf).digest('hex');
+}
+
+export function readManifest() {
+  if (!existsSync(MANIFEST_PATH)) return null;
+  try {
+    return JSON.parse(readFileSync(MANIFEST_PATH, 'utf8'));
+  } catch (err) {
+    return { error: `SOURCE.json is unreadable: ${err.message}` };
+  }
+}
+
+export function writeManifest(manifest) {
+  mkdirSync(path.dirname(MANIFEST_PATH), { recursive: true });
+  writeFileSync(MANIFEST_PATH, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
+}
+
+/** Reads one synced file from the protocol repository, or null if absent. */
+export function readSourceFile(protocolRepo, relSource) {
+  const absolute = path.join(protocolRepo, relSource);
+  if (!existsSync(absolute)) return null;
+  return readFileSync(absolute);
+}
+
+/** Reads the SDK's copy of a synced file, or null if absent. */
+export function readDestFile(relDest) {
+  const absolute = path.join(SDK_ROOT, relDest);
+  if (!existsSync(absolute)) return null;
+  return readFileSync(absolute);
+}

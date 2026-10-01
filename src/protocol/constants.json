@@ -1,0 +1,78 @@
+{
+  "$comment": "Machine-readable protocol constants. This file is the single source of truth for tag values, score bounds and byte lengths. Specifications state the rules; this file states the values. A change here is a protocol version change per SPEC-010.",
+
+  "protocolName": "repid",
+
+  "opReturnTagsComment": "Push-only ASCII tags. lengthBytes is the byte length of the tag itself, which determines the direct-push opcode it is encoded with.",
+  "opReturnTags": {
+    "RATING": {
+      "value": "REPID_RATING1",
+      "lengthBytes": 13
+    },
+    "PLATFORM": {
+      "value": "REPID_PLATFORM1",
+      "lengthBytes": 15
+    },
+    "TRUST": {
+      "value": "REPID_TRUST1",
+      "lengthBytes": 12
+    }
+  },
+
+  "scoreRange": {
+    "$comment": "SPEC-004 RF-04. Values outside this range are NOT dropped: the fact is emitted with valid=false. See SPEC-009 RF-W08.",
+    "MIN_SCORE": 1,
+    "MAX_SCORE": 5,
+    "encodedRange": {
+      "$comment": "The encoded form is a single unsigned byte, so a malformed or out-of-range value can still be 0-255.",
+      "MIN": 0,
+      "MAX": 255,
+      "lengthBytes": 1
+    }
+  },
+
+  "fieldLengths": {
+    "$comment": "Byte lengths of the fixed-width protocol fields. All are rendered as lowercase hex in facts.",
+    "PKH": 20,
+    "TXID": 32,
+    "CATEGORY": 32,
+    "SCORE": 1
+  },
+
+  "factTypes": [
+    { "type": "IDENTITY_GENESIS", "spec": "SPEC-001", "hasValidityField": false },
+    { "type": "IDENTITY_COLLATERAL_TOP_UP", "spec": "SPEC-001", "hasValidityField": true },
+    { "type": "IDENTITY_BURNED", "spec": "SPEC-001", "hasValidityField": true },
+    { "type": "RECEIPT_GENESIS", "spec": "SPEC-003", "hasValidityField": false },
+    { "type": "RATING_ISSUED", "spec": "SPEC-004", "hasValidityField": true },
+    { "type": "PLATFORM_CONFIRMATION", "spec": "SPEC-003", "hasValidityField": true },
+    { "type": "TRUST_LINK", "spec": "SPEC-006", "hasValidityField": true }
+  ],
+
+  "contracts": {
+    "$comment": "Verified with cashc 0.13.2. WARNING: the 'fingerprint' the compiler emits is NOT a conformance anchor. Empirically it does not change when the contract's logic changes: editing `require(tx.outputs.length == 2)` to `== 3` altered the compiled bytecode, the embedded source and the debug bytecode, while the fingerprint stayed identical. It is recorded here for traceability only. Conformance is established by tools/check-artifacts.mjs, which recompiles each source and compares the full artifact (mnemonic bytecode, ABI, embedded source, debug bytecode) against the committed one.",
+    "compiler": { "name": "cashc", "version": "0.13.2" },
+    "identityGenesis": {
+      "source": "contracts/identity_genesis.cash",
+      "artifact": "artifacts/identity_genesis.json",
+      "fingerprint": "523dc5a28a46ebc07751512d900460de973474f3c1783ee9795d879e96d20cc6"
+    },
+    "identityVault": {
+      "source": "contracts/identity_vault.cash",
+      "artifact": "artifacts/identity_vault.json",
+      "fingerprint": "e035cb7ba3e01b88cfd79541a080a8956137ed98dbac9dd4a49a24ed485adf46"
+    },
+    "receiptGenesis": {
+      "source": "contracts/receipt_genesis.cash",
+      "artifact": "artifacts/receipt_genesis.json",
+      "fingerprint": "a6ac8698ce1b79df7fa5d63fb2f8755504017eb81de0f73dc7e5454d5285c063"
+    }
+  },
+
+  "outOfScope": {
+    "$comment": "Values that are often mistaken for protocol constants but belong to the application layer. They MUST NOT be added to this file.",
+    "DEFAULT_IDENTITY_COLLATERAL": "application default (demo server), not a protocol invariant",
+    "reputationWeights": "interpretation layer, see SPEC-007 in the demo repository",
+    "confidenceIndex": "interpretation layer, see SPEC-007 in the demo repository"
+  }
+}
