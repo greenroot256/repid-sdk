@@ -27,6 +27,12 @@ export {
 export { hexToBytes, parseOpReturn, toHex } from './bytes.js';
 export { decodeRawTransaction, type DecodedTransaction } from './transaction.js';
 
+export {
+  SDK_VERSION,
+  SUPPORTED_PROTOCOL_VERSIONS,
+  assertSupportsProtocolVersion,
+} from './version.js';
+
 export type {
   AmountString,
   Category,
