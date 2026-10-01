@@ -5,7 +5,7 @@
   "specification": {
     "normativeCore": "SPEC-008-repid-protocol.md",
     "wireFormat": "SPEC-009-repid-wire-format-and-recognition.md",
-    "recognition": "SPEC-005-fact-recognition.md",
+    "recognition": "SPEC-005-indexer-protocol.md",
     "versioning": "SPEC-010-protocol-versioning.md"
   },
   "promotionTo1_0_0": [
