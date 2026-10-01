@@ -52,6 +52,17 @@ export const SYNCED_FILES = [
     label: 'protocol version',
   },
   {
+    // The requirement inventory is test-only. A consumer of the SDK never needs
+    // to know which requirements the protocol declares, but the traceability
+    // test needs the exact list to check itself against, and that list must come
+    // from the specifications rather than from a hand-kept copy here: a second
+    // copy is a second truth, which is the reason this file exists.
+    source: 'protocol/requirements.json',
+    dest: 'test/fixtures/requirements.json',
+    scope: 'test',
+    label: 'requirement inventory',
+  },
+  {
     source: 'artifacts/identity_genesis.json',
     dest: 'test/fixtures/identity_genesis.json',
     scope: 'test',
