@@ -80,6 +80,17 @@ export const SYNCED_FILES = [
     scope: 'test',
     label: 'receipt genesis artifact',
   },
+  {
+    // The canonical covenant bytecode, in hex. The artifacts above cannot serve
+    // this purpose: their `bytecode` field holds disassembled mnemonics, which
+    // are not comparable to anything on chain. A recognizer that verifies a fact
+    // came from a covenant needs the real bytes, and the compiler version they
+    // were produced with, because a different compiler emits different bytes.
+    source: 'protocol/covenant-bytecode.json',
+    dest: 'test/fixtures/covenant-bytecode.json',
+    scope: 'test',
+    label: 'canonical covenant bytecode',
+  },
 ];
 
 /**

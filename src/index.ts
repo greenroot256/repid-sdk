@@ -27,6 +27,22 @@ export {
 export { hexToBytes, parseOpReturn, toHex } from './bytes.js';
 export { decodeRawTransaction, type DecodedTransaction } from './transaction.js';
 
+// Covenant binding is exposed but not applied by `indexRawTransaction`: base
+// recognition stays shape-based, and binding is a separate, opt-in step. See the
+// module header for why the comparison is exact and what it does not cover.
+export {
+  readP2SHHash,
+  readRedeemScript,
+  findFinalPush,
+  buildExpectedScript,
+  verifyVaultOutputBinding,
+  verifyRedeemScriptBinding,
+  type BindingFailure,
+  type BindingResult,
+  type CanonicalCovenant,
+  type ConstructorInput,
+} from './covenant.js';
+
 export {
   SDK_VERSION,
   SUPPORTED_PROTOCOL_VERSIONS,

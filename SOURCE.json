@@ -43,6 +43,12 @@
       "dest": "test/fixtures/receipt_genesis.json",
       "label": "receipt genesis artifact",
       "sha256": "6b24cdc3cfd1452e507a47b261fb4e3f49b8dfe86b66edc656ba0fa5ddacf9e7"
+    },
+    {
+      "source": "protocol/covenant-bytecode.json",
+      "dest": "test/fixtures/covenant-bytecode.json",
+      "label": "canonical covenant bytecode",
+      "sha256": "9b8d6f5c07dc9338e4a4313d02d12bb4d908bf4b9384d3704a01b9fe1378c5c5"
     }
   ]
 }
