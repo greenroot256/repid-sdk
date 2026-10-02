@@ -48,6 +48,18 @@
 // Confirmations are deliberately plain P2PKH spends with an `OP_RETURN` and have
 // no covenant to check, which is correct: they are unilateral and need no
 // authorization beyond their own signature.
+//
+// What a failed binding means. It is a rejection, not a fact marked invalid. A
+// transaction that has the right shape but did not come from the covenant is not
+// a RepID fact that happened to turn out badly; it is not a RepID fact at all, and
+// emitting it with `valid: false` would assert the opposite, that the protocol
+// knows about this thing and disapproves of it. The distinction matters because
+// `valid: false` is already a defined protocol value with a different job
+// (SPEC-009 RF-W08: a rating whose score is out of range is still reported, so a
+// consumer can see that the attempt was made). Reusing it for "this was never a
+// RepID transaction" would overload it and give a consumer no way to tell a
+// reported-but-invalid fact from an unrecognized one. So the profile rejects,
+// and rejection is visible as the transaction not producing a fact at all.
 
 import { binToHex, hash160, hash256 } from '@bitauth/libauth';
 import { hexToBytes } from './bytes.js';
