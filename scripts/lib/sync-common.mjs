@@ -91,6 +91,17 @@ export const SYNCED_FILES = [
     scope: 'test',
     label: 'canonical covenant bytecode',
   },
+  {
+    // The raw transactions of the real Chipnet run. The protocol repository also
+    // records the facts it concluded about them, but a conclusion is not
+    // evidence: the recognizer has to be able to re-derive them from the bytes
+    // to prove it reaches the same conclusion. Kept as one document so the txid
+    // and the hex cannot be separated.
+    source: 'conformance/fixtures/real-chain-txs.json',
+    dest: 'test/fixtures/real-chain-txs.json',
+    scope: 'test',
+    label: 'real Chipnet transactions',
+  },
 ];
 
 /**

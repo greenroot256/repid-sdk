@@ -49,6 +49,12 @@
       "dest": "test/fixtures/covenant-bytecode.json",
       "label": "canonical covenant bytecode",
       "sha256": "9b8d6f5c07dc9338e4a4313d02d12bb4d908bf4b9384d3704a01b9fe1378c5c5"
+    },
+    {
+      "source": "conformance/fixtures/real-chain-txs.json",
+      "dest": "test/fixtures/real-chain-txs.json",
+      "label": "real Chipnet transactions",
+      "sha256": "f181d8789ce4837249fd802c5c8db1a8bcc14dfee37f30787807c1809c7d93fc"
     }
   ]
 }
