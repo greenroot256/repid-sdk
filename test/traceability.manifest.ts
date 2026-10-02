@@ -35,7 +35,9 @@ const RATING = 'issued_rating_and_indexer.test.ts';
 const CONSUME = 'rating_right_consumption.test.ts';
 const PLATFORM = 'platform_confirmation.test.ts';
 const TRUST = 'trust_link.test.ts';
-const OPCODE = 'op_return_encoding.test.ts';
+  const OPCODE = 'op_return_encoding.test.ts';
+  const BINDING = 'covenant_binding.test.ts';
+  const REAL = 'real_chain_binding.test.ts';
 
 export const COVERED: Readonly<Record<string, Covered>> = {
   // --- SPEC-008 section 4.1, token structure --------------------------------
@@ -319,6 +321,64 @@ export const COVERED: Readonly<Record<string, Covered>> = {
       'the exact boundary is accepted, so the rule is not implemented as a ' +
       'stricter-than-required comparison.',
   },
+  // --- SPEC-009 section 12, binding verification (optional) ------------------
+  'SPEC-009/RF-W47': {
+    tests: [
+      `${BINDING} :: reveals the canonical redeem script on the vault input`,
+      `${BINDING} :: reveals the canonical redeem script on the receipt input`,
+      `${BINDING} :: pushes the constructor arguments in reverse declaration order`,
+      `${BINDING} :: differs per owner, which is why the expected script is rebuilt`,
+      `${BINDING} :: rejects a scriptSig whose last push is the covenant body without its args`,
+      `${REAL} :: recognizes both identity genesis transactions and binds each to the vault`,
+      `${REAL} :: recognizes the receipt genesis and binds it to the receipt covenant`,
+    ],
+    note:
+      'the expected script is rebuilt from the canonical bytecode plus the pkh ' +
+      'values the recognizer already read, never compared against a constant. The ' +
+      'real-chain half matters because it is compiled and broadcast by a toolchain ' +
+      'that did not write the check.',
+  },
+  'SPEC-009/RF-W48': {
+    tests: [
+      `${BINDING} :: accepts the classic 23-byte P2SH form as well as the CashTokens one`,
+      `${BINDING} :: reads the long push form, which is what these scripts need`,
+    ],
+    note:
+      'both P2SH hash forms are accepted and the function is selected from the ' +
+      'width found, so the same 20 bytes under the 32-byte form does not match.',
+  },
+  'SPEC-009/RF-W49': {
+    tests: [
+      `${BINDING} :: reports a vault locked to a foreign P2SH as a valid identity today`,
+      `${BINDING} :: reports a receipt whose covenant was never run as a valid receipt today`,
+      `${BINDING} :: rejects a P2PKH output as a vault, which a hash check alone would miss`,
+      `${BINDING} :: does not accept a receipt whose covenant was instantiated for other parties`,
+      `${BINDING} :: rejects a scriptSig whose last push is the covenant body without its args`,
+      `${BINDING} :: reports a scriptSig with no final push instead of guessing at its tail`,
+    ],
+    note:
+      'the first two are the impostors the base recognizer accepts today, which ' +
+      'is what makes them worth asserting: the vector is the live gap, not a ' +
+      'hypothetical one.',
+  },
+  'SPEC-009/RF-W50': {
+    tests: [
+      `${REAL} :: recognizes both ratings, which have no covenant to bind to`,
+    ],
+    note:
+      'a control case. Requiring binding of a fact that has no covenant behind it ' +
+      'would be a false rejection, so the ratings are asserted to survive.',
+  },
+  'SPEC-009/RF-W53': {
+    tests: [
+      `${BINDING} :: emits no binding verdict for a legacy genesis, instead of a failed one`,
+    ],
+    note:
+      'the legacy form is out of scope for binding and stays recognized. The test ' +
+      'also pins why the order matters: a P2PKH spend ends in a 65-byte signature, ' +
+      'so reading the unlocking script first would make a legacy genesis ' +
+      'indistinguishable from a vault instantiated for the wrong owner.',
+  },
 };
 
 /**
@@ -348,6 +408,35 @@ export const UNCOVERED: Readonly<Record<string, Uncovered>> = {
   'SPEC-008/RF-O20': {
     why: 'A prohibition, not a behaviour: no on-chain rule may encode a value judgment. An assertion cannot prove the absence of a class of code. Verified by enumerating all 60 require statements in the three covenants, recorded in CONSTITUTION-AUDIT.md Article 1.',
     fix: 'verified by inspection; not convertible into a test',
+  },
+  // --- Binding verification, declared before it was implemented --------------
+  // These four are the honest state of section 12 as of this commit: the module
+  // and its tests exist, and the wire to the recognizer does not. Recording them
+  // as uncovered is the point — a requirement mapped to a test that never
+  // exercises it would be worse than a gap.
+  'SPEC-008/RF-V12': {
+    why: 'The rule that only a bound genesis establishes an identity is specified and the binding check it rests on is implemented and tested, but the recognizer does not yet consume the verdict: indexRawTransaction still returns the shape regardless. Nothing can assert the rule end to end while the last link is missing.',
+    fix: 'wire binding into indexRawTransaction as an opt-in flag, then assert that an unbound vault genesis yields no identity',
+  },
+  'SPEC-008/RF-V13': {
+    why: 'The recognition half is covered (schema_conformance validates a legacy identity genesis) and the binding half by SPEC-009/RF-W53. What no test can assert yet is the absence of an identity, because the SDK has no notion of one to assert about.',
+    fix: 'comes with RF-V12: an identity-availability query over the store, tested against a legacy and a bound genesis side by side',
+  },
+  'SPEC-009/RF-W52': {
+    why: 'Same gap as SPEC-008/RF-V12 seen from the recognition side, and the same fix. The module proves the bytes match; nothing yet consumes that to withhold an identity.',
+    fix: 'covered by the same change that covers RF-V12',
+  },
+  'SPEC-009/RF-W46': {
+    why: 'A permission, not a behaviour. "MAY verify binding" cannot fail, so a test for it would assert that an option exists in the type system at most. Its substance is tested under RF-W47 and RF-W49.',
+    fix: 'verified by the RF-W47 and RF-W49 citations; not convertible into a separate test',
+  },
+  'SPEC-009/RF-W51': {
+    why: 'A prohibition on a claim rather than on a behaviour: binding must not be described as signature verification. No assertion can prove how prose describes itself.',
+    fix: 'verified by inspection of the module header and SPEC-009 section 12.3, both of which state the limit; not convertible into a test',
+  },
+  'SPEC-009/RF-W54': {
+    why: 'The capability declaration is a claim an implementation makes about itself, and the honest test is that the claim is false when a covenant-backed path is left unverified. No such declaration exists yet, so there is nothing to test.',
+    fix: 'covered by the change that covers RF-V52; then assert that declaring the capability without applying section 12 everywhere is rejected',
   },
 };
 

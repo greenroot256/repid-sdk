@@ -60,6 +60,16 @@
 // RepID transaction" would overload it and give a consumer no way to tell a
 // reported-but-invalid fact from an unrecognized one. So the profile rejects,
 // and rejection is visible as the transaction not producing a fact at all.
+//
+// Ask the locking script first, and only then the unlocking one. This ordering is
+// load-bearing, not stylistic. `readP2SHHash` returns null for a plain P2PKH, so
+// it answers "is there a covenant here?" honestly and lets a caller tell "no
+// covenant to check" (a legacy genesis, which stays recognized) from "the
+// covenant does not match" (an impostor, which is rejected). Reversed, it breaks:
+// `readRedeemScript` takes the final push of an unlocking script, and a P2PKH
+// spend ends in a 65-byte signature, so a legacy genesis looks exactly like a
+// vault instantiated for the wrong owner — a rejection of history, on the strength
+// of a signature.
 
 import { binToHex, hash160, hash256 } from '@bitauth/libauth';
 import { hexToBytes } from './bytes.js';

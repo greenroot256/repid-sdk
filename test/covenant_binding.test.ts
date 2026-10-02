@@ -411,3 +411,69 @@ describe('every instance has its own script hash', () => {
     ).toThrow(/unsupported constructor type/);
   });
 });
+
+describe('a legacy identity has no covenant, and that is not a failure', () => {
+  // SPEC-009 RF-W53, SPEC-008 RF-V13. The vault form is bound because a canonical
+  // covenant produced it. The legacy form is recognized because its shape is
+  // unambiguous, and it is emitted without a binding verdict at all.
+  //
+  // The distinction matters because the two failure modes look identical from
+  // outside if they are conflated. "There is no covenant to check" and "the
+  // covenant does not match" both surface as `bound: false`, and a profile that
+  // treated the first as the second would reject every identity minted before the
+  // vault existed, deleting history rather than grading it.
+
+  let provider: MockNetworkProvider;
+
+  beforeEach(() => {
+    provider = makeProvider();
+  });
+
+  it('emits no binding verdict for a legacy genesis, instead of a failed one', async () => {
+    const owner = makeParty(9101);
+    const contract = new Contract(vaultArtifact, [owner.pkh], { provider });
+    const utxo = mockUtxo('ee'.repeat(32), 10_000n);
+    provider.addUtxo(contract.address, utxo);
+
+    // The identity genesis contract issues the NFT straight to a P2PKH. There is
+    // no covenant in the locking script and no collateral, which is exactly the
+    // shape RF-W36 describes.
+    const identity = new Contract(
+      (await import('./fixtures/identity_genesis.json', { with: { type: 'json' } })).default,
+      [owner.pkh],
+      { provider },
+    );
+    const tx = await new TransactionBuilder({ provider })
+      .addInput(utxo, unlocker(identity, 'mint').mint!())
+      .addOutput({
+        to: owner.address,
+        amount: 1000n,
+        token: { category: utxo.txid, amount: 0n, nft: { capability: 'none', commitment: '' } },
+      })
+      .addOutput({ to: owner.address, amount: 8000n })
+      .send();
+
+    // Recognized, as RF-W35 and RF-W36 require.
+    const fact = indexRawTransaction(tx.hex, createMemoryStore());
+    expect(fact?.type).toBe('IDENTITY_GENESIS');
+    // And a legacy genesis, so no collateral and no identity outpoint.
+    expect(fact).not.toHaveProperty('collateral');
+
+    // The contrast that gives the test its point, and a trap worth naming.
+    //
+    // readP2SHHash returns null for the legacy output, so "no covenant to check"
+    // is distinguishable from "the covenant did not match". But the *input* is a
+    // P2PKH spend whose unlocking script ends in a 65-byte signature, and
+    // readRedeemScript takes the final push: asked about this input it happily
+    // returns the signature as a 65-byte "redeem script". It cannot know better
+    // from one transaction alone.
+    //
+    // So the discriminator is the locking script, never the unlocking one, and
+    // that ordering is a requirement rather than an implementation detail. Read
+    // the other way round, a legacy genesis looks exactly like a vault whose
+    // covenant was instantiated for the wrong owner.
+    const { tx: decoded } = decodeRawTransaction(tx.hex);
+    expect(readP2SHHash(decoded.outputs[0]!.lockingBytecode)).toBeNull();
+    expect(readRedeemScript(decoded.inputs[0]!.unlockingBytecode)).not.toBeNull();
+  });
+});
