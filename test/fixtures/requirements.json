@@ -15,8 +15,8 @@
     ]
   },
   "totals": {
-    "declarations": 170,
-    "distinctIdentifiers": 141,
+    "declarations": 172,
+    "distinctIdentifiers": 143,
     "collidingIdentifiers": 9,
     "bySpecification": {
       "SPEC-001": 9,
@@ -26,7 +26,7 @@
       "SPEC-005": 13,
       "SPEC-006": 4,
       "SPEC-008": 73,
-      "SPEC-009": 55
+      "SPEC-009": 57
     }
   },
   "collisions": [
@@ -1942,14 +1942,36 @@
       "text": "An implementation that applies binding verification **MUST NOT** require it of `TRUST_LINK`, `PLATFORM_CONFIRMATION` or `RATING_ISSUED`. Those three are plain P2PKH spends carrying an `OP_RETURN`, and they have no covenant to check. That is correct rather than a gap: they are unilateral and need no authorization beyond the spender's own signature."
     },
     {
+      "key": "SPEC-009/RF-W56",
+      "id": "RF-W56",
+      "spec": "SPEC-009",
+      "specFile": "SPEC-009-repid-wire-format-and-recognition.md",
+      "section": "12.3 Which version's bytecode",
+      "paragraph": "for every later one. Nothing on chain says which version minted it.",
+      "kind": "Prohibition",
+      "line": 493,
+      "text": "An implementation that applies binding verification **MUST** compare the revealed script against the canonical bytecode of the single protocol version it implements, and **MUST NOT** widen the comparison to the bytecodes of other versions in order to obtain a match. The applicable version is a property of the implementation, not something recovered from the transaction."
+    },
+    {
+      "key": "SPEC-009/RF-W57",
+      "id": "RF-W57",
+      "spec": "SPEC-009",
+      "specFile": "SPEC-009-repid-wire-format-and-recognition.md",
+      "section": "12.3 Which version's bytecode",
+      "paragraph": "for every later one. Nothing on chain says which version minted it.",
+      "kind": "Undesired Behavior",
+      "line": 508,
+      "text": "Where a covenant-backed fact was minted under a protocol version whose canonical bytecode differs from the one the implementation implements, binding verification **MUST** emit **no fact** (RF-W49). The implementation **MUST NOT** report it as recognized-but-invalid, and **MUST NOT** present the mismatch as evidence that the transaction was forged, since a correct transaction from an earlier version produces the same bytes."
+    },
+    {
       "key": "SPEC-009/RF-W51",
       "id": "RF-W51",
       "spec": "SPEC-009",
       "specFile": "SPEC-009-repid-wire-format-and-recognition.md",
-      "section": "12.3 What binding does not establish",
+      "section": "12.4 What binding does not establish",
       "paragraph": "the VM does, and the difference is stated rather than blurred.",
       "kind": "Prohibition",
-      "line": 489,
+      "line": 523,
       "text": "Binding verification **MUST NOT** be described as verifying signatures, validating scripts, or establishing that a transaction is valid in any sense beyond its bytes matching the canonical covenant. It does not run the VM (RF-W27) and re-checks nothing the network already enforced."
     },
     {
@@ -1957,10 +1979,10 @@
       "id": "RF-W52",
       "spec": "SPEC-009",
       "specFile": "SPEC-009-repid-wire-format-and-recognition.md",
-      "section": "12.3 What binding does not establish",
+      "section": "12.4 What binding does not establish",
       "paragraph": "the VM does, and the difference is stated rather than blurred.",
       "kind": "Options",
-      "line": 494,
+      "line": 528,
       "text": "An implementation that establishes a RepID identity, a Receipt or Rating Rights (SPEC-008 RF-V12) **MUST** base that on binding, and **MUST NOT** base it on a shape match alone. A recognizer that does not apply this section may still report the shape, and must then be understood to make no claim about identities at all."
     },
     {
@@ -1968,10 +1990,10 @@
       "id": "RF-W53",
       "spec": "SPEC-009",
       "specFile": "SPEC-009-repid-wire-format-and-recognition.md",
-      "section": "12.3 What binding does not establish",
+      "section": "12.4 What binding does not establish",
       "paragraph": "the VM does, and the difference is stated rather than blurred.",
       "kind": "Events",
-      "line": 499,
+      "line": 533,
       "text": "An `IDENTITY_GENESIS` in legacy form (SPEC-008 RF-V13) is **out of scope** for this section and **MUST NOT** be rejected by it. There is no covenant in that form, so there is nothing to bind, and the fact stays recognized exactly as §9.1 requires. An implementation that applies binding must therefore distinguish \"no covenant to check\" from \"covenant does not match\"."
     },
     {
@@ -1979,10 +2001,10 @@
       "id": "RF-W54",
       "spec": "SPEC-009",
       "specFile": "SPEC-009-repid-wire-format-and-recognition.md",
-      "section": "12.4 Conformance",
+      "section": "12.5 Conformance",
       "paragraph": "",
       "kind": "Options",
-      "line": 508,
+      "line": 542,
       "text": "An implementation **MAY** declare a **binding-verified** capability, separate from recognition conformity (RF-W41), asserting that it applies §12 to every fact that has a covenant behind it. It **MUST NOT** declare the capability while leaving any covenant-backed path unverified, and the declaration **MUST** be accompanied by the executable evidence required by RF-W44."
     }
   ]

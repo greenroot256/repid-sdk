@@ -456,6 +456,28 @@ export const COVERED: Readonly<Record<string, Covered>> = {
       'the distinctness requirement catches it. Required with binding off, since ' +
       'it is a fact about the outputs rather than about whether a covenant ran.',
   },
+  'SPEC-009/RF-W56': {
+    tests: [
+      `${REAL} :: records that the receipt genesis on chain predates the distinct-parties rule`,
+    ],
+    note:
+      'the prohibition is asserted by what the implementation does not do. The ' +
+      'Chipnet receipt was minted from the 0.1.0 body and the SDK holds only the ' +
+      '0.2.0 one; a fallback would bind it, and the test requires the verdict to ' +
+      'be "does not match". It cannot prove no fallback exists for some other ' +
+      'bytecode, so what it pins is the decision: the transaction stays unbound ' +
+      'even though a matching earlier version is known and checkable.',
+  },
+  'SPEC-009/RF-W57': {
+    tests: [
+      `${REAL} :: records that the receipt genesis on chain predates the distinct-parties rule`,
+    ],
+    note:
+      'both halves of the requirement, on one real transaction. No fact at all ' +
+      'with binding applied, rather than a fact marked invalid, and the same ' +
+      'transaction still recognized without binding, which is what distinguishes ' +
+      '"unverified" from "forged" (SPEC-009 section 12.3).',
+  },
 };
 
 /**
@@ -496,7 +518,7 @@ export const UNCOVERED: Readonly<Record<string, Uncovered>> = {
   },
   'SPEC-009/RF-W51': {
     why: 'A prohibition on a claim rather than on a behaviour: binding must not be described as signature verification. No assertion can prove how prose describes itself.',
-    fix: 'verified by inspection of the module header and SPEC-009 section 12.3, both of which state the limit; not convertible into a test',
+    fix: 'verified by inspection of the module header and SPEC-009 section 12.4, both of which state the limit; not convertible into a test',
   },
   'SPEC-009/RF-W54': {
     why: 'The capability declaration is a claim an implementation makes about itself, and the honest test is that the claim is false when a covenant-backed path is left unverified. The verdict is now consumed at every covenant-backed path in SPEC-009 section 12, but no implementation declares that capability anywhere, so there is still nothing to assert a false declaration against.',

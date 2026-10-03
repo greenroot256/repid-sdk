@@ -127,6 +127,8 @@ describe('the real Chipnet run', () => {
 
   it('records that the receipt genesis on chain predates the distinct-parties rule', () => {
     const tx = TRANSACTIONS.find((t) => t.type === 'RECEIPT_GENESIS')!;
+    // Shape only. This is the transaction as it is recorded, and the covenant
+    // that accepted it is the 0.1.0 one.
     const fact = replayThrough(tx.txid, 'RECEIPT_GENESIS');
     const { tx: decoded } = decodeRawTransaction(tx.hex);
 
@@ -148,13 +150,16 @@ describe('the real Chipnet run', () => {
     // no longer matches a script a real node accepted in good faith.
     //
     // The receipt is still a valid Receipt and the fixture is still real evidence.
-    // What changed is that binding, as currently specified, verifies against one
-    // canonical bytecode, and cannot verify history minted under an earlier one.
-    // That is a genuine open question about version-scoped binding, not a bug in
-    // the check, and it is recorded in SPEC-009 Annex B.2 rather than resolved
-    // here: the obvious fix (try every bytecode the protocol ever defined) lets a
-    // sender pick the version that makes their transaction bind, which is a
-    // decision about what binding is for.
+    // What changed is that binding verifies against the canonical bytecode of one
+    // version, and a transaction from an earlier version does not match it.
+    //
+    // This is the specified behaviour and not work left undone: RF-W56 forbids
+    // widening the comparison to the bytecodes of other versions, because that
+    // would let a sender choose the version under which their bytes bind, and
+    // RF-W57 then requires no fact rather than a verdict. The transaction is kept
+    // as a negative fixture precisely so that this stays true, and so that a day
+    // someone implements a fallback the test says so loudly. SPEC-009 Annex B.2
+    // carries the same vector; the identities below are the positive control.
     expect(result.bound).toBe(false);
     expect(result.reason).toBe('redeem-script-differs');
 
@@ -162,6 +167,27 @@ describe('the real Chipnet run', () => {
     // and their two push opcodes. 168 would be the 0.2.0 layout.
     expect(result.revealedLength).toBe(164);
     expect(RECEIPT.bytecodeHex.length / 2).toBe(126);
+
+    // And the consequence at the recognizer: with binding applied, the fact
+    // disappears rather than being reported as invalid. RF-W49 with RF-W57.
+    // The store is replayed to just before the receipt so the receipt is
+    // indexed against the history that preceded it, and it is indexed with
+    // binding applied while the store was built without it, which is the only
+    // way to ask the question: would this transaction be admitted by an
+    // implementation that verifies its bytes.
+    const at = TRANSACTIONS.findIndex((t) => t.txid === tx.txid);
+    for (const earlier of TRANSACTIONS.slice(0, at)) {
+      indexRawTransaction(earlier.hex, store);
+    }
+
+    expect(
+      indexRawTransaction(tx.hex, store, { binding: true }),
+      'RF-W57: a fact from another protocol version is unrecognized',
+    ).toBeNull();
+    expect(
+      indexRawTransaction(tx.hex, store, { binding: false }),
+      'the same transaction is still a recognized Receipt without binding',
+    ).not.toBeNull();
   });
 
   it('still binds the identity covenants, which this version did not change', () => {
