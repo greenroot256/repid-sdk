@@ -134,7 +134,12 @@ export type FactType = RepidFact['type'];
  */
 export type ValidatedFact = Extract<RepidFact, { valid: true }>;
 
-/** What is retained about a tracked identity between transactions. */
+/**
+ * What is retained about a tracked identity between transactions.
+ *
+ * Its presence in the store *is* the identity. Nothing else records that a party
+ * has one, and nothing derived from it may be treated as an identity either.
+ */
 export interface IdentityRecord {
   ownerPkh: Pkh;
   identityCategory: Category;
@@ -177,6 +182,19 @@ export interface RepidStateStore {
   trackReceipt(txid: Txid, record: ReceiptRecord): void;
 
   getIdentity(outpoint: Outpoint): IdentityRecord | undefined;
+  /**
+   * The identity held by `ownerPkh`, if any.
+   *
+   * This is what answers "does this party have a RepID identity", which the
+   * outpoint-keyed lookup cannot: a consumer holds a pkh, not an outpoint, and
+   * making it reconstruct outpoints would mean keeping a second map that could
+   * disagree with the first.
+   *
+   * It returns `undefined` for a legacy genesis, and that is the intended
+   * reading rather than a missing case. A legacy genesis is recognized as a fact
+   * but is never tracked, so it never established an identity (SPEC-008 RF-V13).
+   */
+  getIdentityByOwner(ownerPkh: Pkh): IdentityRecord | undefined;
   trackIdentity(outpoint: Outpoint, record: IdentityRecord): void;
   untrackIdentity(outpoint: Outpoint): void;
 

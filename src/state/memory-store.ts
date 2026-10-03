@@ -42,6 +42,17 @@ export function createMemoryStore(): RepidStateStore {
     getIdentity(outpoint) {
       return identities.get(outpoint);
     },
+    getIdentityByOwner(ownerPkh) {
+      // A linear scan, and deliberately not a second map. An index would have to
+      // be kept in step with `identities` by hand, and the bug it invites is
+      // invisible: the store would report an identity it no longer tracks. The
+      // number of live identities is small enough that scanning is cheaper than
+      // that risk.
+      for (const record of identities.values()) {
+        if (record.ownerPkh === ownerPkh) return record;
+      }
+      return undefined;
+    },
     trackIdentity(outpoint, record) {
       identities.set(outpoint, record);
     },

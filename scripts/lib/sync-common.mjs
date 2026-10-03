@@ -83,12 +83,18 @@ export const SYNCED_FILES = [
   {
     // The canonical covenant bytecode, in hex. The artifacts above cannot serve
     // this purpose: their `bytecode` field holds disassembled mnemonics, which
-    // are not comparable to anything on chain. A recognizer that verifies a fact
-    // came from a covenant needs the real bytes, and the compiler version they
-    // were produced with, because a different compiler emits different bytes.
+    // are not comparable to anything on chain.
+    //
+    // This one is `scope: 'src'` rather than `scope: 'test'` because the SDK's
+    // binding verification (SPEC-009 section 12) needs it at runtime: to verify a
+    // fact came from a covenant it must reconstruct the expected script, and the
+    // bytes to reconstruct it from are the compiler's output, which a recognizer
+    // cannot derive from the chain. A consumer that enables binding therefore
+    // needs the bytecode shipped in the package, and the compiler version it was
+    // produced with, because a different compiler emits different bytes.
     source: 'protocol/covenant-bytecode.json',
-    dest: 'test/fixtures/covenant-bytecode.json',
-    scope: 'test',
+    dest: 'src/protocol/covenant-bytecode.json',
+    scope: 'src',
     label: 'canonical covenant bytecode',
   },
   {

@@ -43,7 +43,7 @@ import {
 } from '../src/covenant.js';
 import vaultArtifact from './fixtures/identity_vault.json' with { type: 'json' };
 import receiptArtifact from './fixtures/receipt_genesis.json' with { type: 'json' };
-import bytecode from './fixtures/covenant-bytecode.json' with { type: 'json' };
+import bytecode from '../src/protocol/covenant-bytecode.json' with { type: 'json' };
 import { makeParty, makeProvider, mockUtxo, unlocker, expectFact, type Party } from './helpers.js';
 
 const provider: MockNetworkProvider = makeProvider();

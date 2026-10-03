@@ -99,6 +99,14 @@ export function createJsonFileStore(filePath: string): JsonFileStore {
     getIdentity(outpoint) {
       return identities.get(outpoint);
     },
+    getIdentityByOwner(ownerPkh) {
+      // Scanned, not indexed, for the same reason as the memory store: a second
+      // map has to be kept in step by hand and can disagree with this one.
+      for (const record of identities.values()) {
+        if (record.ownerPkh === ownerPkh) return record;
+      }
+      return undefined;
+    },
     trackIdentity(outpoint, record) {
       identities.set(outpoint, record);
       save();

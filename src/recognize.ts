@@ -17,9 +17,21 @@
 //
 // A rating whose score is out of range is case 1 with `valid: false`, never case
 // 2. Silently discarding it would erase the record that someone tried.
+//
+// There is a fourth outcome once binding verification is switched on, and it is
+// also case 2: a transaction with the right shape that did not come from the
+// canonical covenant. That is a rejection, not a fact marked `valid: false`,
+// because `valid: false` already means "recognized but broke a semantic rule" and
+// a consumer could not otherwise tell the two apart (SPEC-009 RF-W49).
 
 import { extractP2PKH, extractPkhFromUnlocking, parseOpReturn, toHex } from './bytes.js';
 import { MIN_SCORE, MAX_SCORE, OP_RETURN_TAGS } from './constants.js';
+import {
+  verifyRedeemScriptBinding,
+  verifyVaultOutputBinding,
+  type CanonicalCovenant,
+} from './covenant.js';
+import covenantBytecode from './protocol/covenant-bytecode.json' with { type: 'json' };
 import {
   categoryAppearsInOutputs,
   decodeRawTransaction,
@@ -37,6 +49,32 @@ import type {
   RepidStateStore,
   TrustLinkFact,
 } from './types.js';
+
+/**
+ * The canonical covenants, synced from the protocol repository.
+ *
+ * Binding cannot be done without them and cannot be done from the chain: the
+ * expected script is a compiler output, so an implementation that wants to verify
+ * binding has to be shipped the bytes it is verifying against. Reconstructing
+ * them from the transaction under inspection would prove nothing, which is why
+ * these are a synced normative input and not something read off the wire.
+ */
+const VAULT = covenantBytecode.contracts.identityVault as CanonicalCovenant;
+const RECEIPT = covenantBytecode.contracts.receiptGenesis as CanonicalCovenant;
+
+/** How strictly to recognize. The default is unchanged, shape-only recognition. */
+export interface RecognitionOptions {
+  /**
+   * Verify that a covenant-backed fact was produced by the canonical covenant,
+   * and emit no fact when it was not (SPEC-009 §12).
+   *
+   * Off by default, and the default is not a fallback: an implementation that
+   * never sets this makes no claim about identities at all, only about shapes
+   * (SPEC-008 RF-V12). Turning it on makes this recognizer return *fewer* facts,
+   * because it rejects impostors that shape recognition alone would report.
+   */
+  binding?: boolean;
+}
 
 /** Reads the pkh of a P2PKH output, or null if it is not one. */
 function pkhOf(output: TransactionOutput | undefined): string | null {
@@ -98,6 +136,22 @@ function recognizeIdentityGenesis(
 }
 
 /**
+ * The outcome of looking through a transaction's inputs for a tracked vault
+ * outpoint.
+ *
+ * `none` and `rejected` both yield no fact, but they are not the same answer and
+ * conflating them is a real hazard: a top-up re-emits the NFT with the same shape
+ * as a genesis, so a rejected spend that falls through to genesis recognition is
+ * re-read as a brand new identity, and the store ends up tracking an identity that
+ * no covenant ever created. `rejected` has to end the transaction where `none`
+ * lets it continue.
+ */
+type SpendOutcome =
+  | { kind: 'fact'; fact: RepidFact }
+  | { kind: 'none' }
+  | { kind: 'rejected' };
+
+/**
  * SPEC-001. The spend of a tracked vault identity, keyed by covenant outpoint.
  *
  * The category not reappearing in any output means the NFT was burned, so the
@@ -114,7 +168,8 @@ function recognizeIdentitySpend(
   tx: DecodedTransaction,
   txid: string,
   store: RepidStateStore,
-): RepidFact | null {
+  binding: boolean,
+): SpendOutcome {
   for (const input of tx.inputs) {
     const outpoint = `${toHex(input.outpointTransactionHash)}:${input.outpointIndex}`;
     const identity = store.getIdentity(outpoint);
@@ -122,15 +177,33 @@ function recognizeIdentitySpend(
 
     const { identityCategory: category, ownerPkh } = identity;
 
+    // The spend reveals its redeem script, and that script has to be the vault's.
+    // Checked here, before any of the tracking below moves, because the
+    // alternatives are worse: an impostor would otherwise be recorded as a
+    // genuine top-up and the collateral would move to an outpoint the covenant
+    // never controls.
+    //
+    // A tracked outpoint released with the wrong script is not an identity spend
+    // at all, and it ends the transaction. Letting recognition continue would let
+    // another input, or the top-up's own re-emitted NFT, still produce a fact —
+    // which would make the rejection depend on input order.
+    if (binding) {
+      const result = verifyRedeemScriptBinding(input.unlockingBytecode, [ownerPkh], VAULT);
+      if (!result.bound) return { kind: 'rejected' };
+    }
+
     if (!categoryAppearsInOutputs(tx, category)) {
       store.untrackIdentity(outpoint);
       return {
-        type: 'IDENTITY_BURNED',
-        txid,
-        identityCategory: category,
-        ownerPkh,
-        spentOutpoint: outpoint,
-        valid: true,
+        kind: 'fact',
+        fact: {
+          type: 'IDENTITY_BURNED',
+          txid,
+          identityCategory: category,
+          ownerPkh,
+          spentOutpoint: outpoint,
+          valid: true,
+        },
       };
     }
 
@@ -158,17 +231,20 @@ function recognizeIdentitySpend(
     }
 
     return {
-      type: 'IDENTITY_COLLATERAL_TOP_UP',
-      txid,
-      identityCategory: category,
-      ownerPkh,
-      spentOutpoint: outpoint,
-      previousCollateral: previousCollateral.toString(),
-      collateral: collateral.toString(),
-      valid,
+      kind: 'fact',
+      fact: {
+        type: 'IDENTITY_COLLATERAL_TOP_UP',
+        txid,
+        identityCategory: category,
+        ownerPkh,
+        spentOutpoint: outpoint,
+        previousCollateral: previousCollateral.toString(),
+        collateral: collateral.toString(),
+        valid,
+      },
     };
   }
-  return null;
+  return { kind: 'none' };
 }
 
 /**
@@ -369,26 +445,50 @@ function recognizeTrustLink(tx: DecodedTransaction, txid: string): TrustLinkFact
  * accumulated by earlier transactions are what let a rating be attributed to
  * the right parties and a confirmation be checked; the store is updated as a
  * side effect of recognizing the transaction.
+ * @param options - pass `binding: true` to verify covenant linkage (SPEC-009
+ * §12). Off by default.
  * @returns the recognized fact, or `null` if the transaction matches no known
- * RepID shape. Throws if the hex cannot be decoded, because a transaction that
- * cannot be read is not the same as a transaction that is not a fact.
+ * RepID shape — or, with binding on, if it matches the shape of a
+ * covenant-backed fact without having come from the covenant. Throws if the hex
+ * cannot be decoded, because a transaction that cannot be read is not the same
+ * as a transaction that is not a fact.
  *
  * The order below is the recognition precedence and is normative: a vault spend
  * is examined before a genesis because a top-up re-emits the NFT toward the
  * covenant with the same shape as a genesis, and only the outpoint trail
  * distinguishes the two.
+ *
+ * Every binding check runs *before* this function touches the store. That ordering
+ * is the whole point: a rejected transaction must leave no trace, or the index
+ * would end up holding an identity or a Rating Right that no covenant ever
+ * created.
  */
 export function indexRawTransaction(
   rawTxHex: string,
   store: RepidStateStore,
+  options: RecognitionOptions = {},
 ): RepidFact | null {
   const { txid, tx } = decodeRawTransaction(rawTxHex);
+  const binding = options.binding === true;
 
-  const identitySpend = recognizeIdentitySpend(tx, txid, store);
-  if (identitySpend) return identitySpend;
+  const identitySpend = recognizeIdentitySpend(tx, txid, store, binding);
+  if (identitySpend.kind === 'fact') return identitySpend.fact;
+  if (identitySpend.kind === 'rejected') return null;
 
   const identityGenesis = recognizeIdentityGenesis(tx, txid);
   if (identityGenesis) {
+    // Only the vault form is bound. A legacy genesis has no covenant in it at
+    // all, so there is nothing to compare and nothing to reject: it stays a
+    // recognized fact and, because it is never tracked, it never becomes an
+    // identity (SPEC-008 RF-V13, SPEC-009 RF-W53).
+    if (binding && identityGenesis.identityOutpoint) {
+      const result = verifyVaultOutputBinding(
+        tx.outputs[0]!.lockingBytecode,
+        identityGenesis.ownerPkh,
+        VAULT,
+      );
+      if (!result.bound) return null;
+    }
     if (identityGenesis.identityOutpoint) {
       store.trackIdentity(identityGenesis.identityOutpoint, {
         ownerPkh: identityGenesis.ownerPkh,
@@ -401,6 +501,20 @@ export function indexRawTransaction(
 
   const receipt = recognizeReceiptGenesis(tx, txid);
   if (receipt) {
+    if (binding) {
+      // The genesis input, at vout 0 of its source: that is where the covenant
+      // reveals itself, and it is also the input whose outpoint txid becomes the
+      // category.
+      const genesisInput = tx.inputs.find((input) => input.outpointIndex === 0);
+      const result = genesisInput
+        ? verifyRedeemScriptBinding(
+            genesisInput.unlockingBytecode,
+            receipt.ratingRights.map((right) => right.ownerPkh),
+            RECEIPT,
+          )
+        : null;
+      if (!result?.bound) return null;
+    }
     for (const right of receipt.ratingRights) {
       store.trackRatingRight(right.outpoint, right as RatingRightRecord);
     }

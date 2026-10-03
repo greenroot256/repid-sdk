@@ -31,7 +31,7 @@ import {
   type RepidFact,
   type CanonicalCovenant,
 } from '../src/index.js';
-import bytecode from './fixtures/covenant-bytecode.json' with { type: 'json' };
+import bytecode from '../src/protocol/covenant-bytecode.json' with { type: 'json' };
 import chain from './fixtures/real-chain-txs.json' with { type: 'json' };
 
 const VAULT = bytecode.contracts.identityVault as CanonicalCovenant;

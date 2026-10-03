@@ -36,8 +36,9 @@ const CONSUME = 'rating_right_consumption.test.ts';
 const PLATFORM = 'platform_confirmation.test.ts';
 const TRUST = 'trust_link.test.ts';
   const OPCODE = 'op_return_encoding.test.ts';
-  const BINDING = 'covenant_binding.test.ts';
-  const REAL = 'real_chain_binding.test.ts';
+const BINDING = 'covenant_binding.test.ts';
+const REAL = 'real_chain_binding.test.ts';
+const SEAM = 'binding_recognition.test.ts';
 
 export const COVERED: Readonly<Record<string, Covered>> = {
   // --- SPEC-008 section 4.1, token structure --------------------------------
@@ -355,23 +356,71 @@ export const COVERED: Readonly<Record<string, Covered>> = {
       `${BINDING} :: does not accept a receipt whose covenant was instantiated for other parties`,
       `${BINDING} :: rejects a scriptSig whose last push is the covenant body without its args`,
       `${BINDING} :: reports a scriptSig with no final push instead of guessing at its tail`,
+      `${SEAM} :: reports an impostor vault genesis as an identity`,
+      `${SEAM} :: reports a vault genesis re-pointed at a foreign script as an identity`,
+      `${SEAM} :: rejects a vault genesis revealing a foreign script, leaving no trace`,
+      `${SEAM} :: rejects a receipt genesis that reveals the body without its arguments`,
+      `${SEAM} :: rejects a top-up revealing a foreign script without moving the tracking`,
     ],
     note:
-      'the first two are the impostors the base recognizer accepts today, which ' +
+      'the first tests are the impostors the base recognizer accepts today, which ' +
       'is what makes them worth asserting: the vector is the live gap, not a ' +
-      'hypothetical one.',
+      'hypothetical one. The seam tests are the same impostors built by rewriting a ' +
+      'real covenant transaction, run through indexRawTransaction itself, which is ' +
+      'the only place the verdict is actually consumed.',
   },
   'SPEC-009/RF-W50': {
     tests: [
       `${REAL} :: recognizes both ratings, which have no covenant to bind to`,
+      `${SEAM} :: recognizes ratings, which have no covenant, without rejecting them`,
+      `${SEAM} :: gives identical results with and without binding for trust links`,
     ],
     note:
       'a control case. Requiring binding of a fact that has no covenant behind it ' +
-      'would be a false rejection, so the ratings are asserted to survive.',
+      'would be a false rejection, so the ratings and the trust link are asserted ' +
+      'to survive binding untouched, the trust link by asserting both modes return ' +
+      'the identical fact.',
+  },
+  'SPEC-008/RF-V12': {
+    tests: [
+      `${SEAM} :: accepts a genuine vault genesis and establishes an identity`,
+      `${SEAM} :: rejects a vault genesis revealing a foreign script, leaving no trace`,
+      `${SEAM} :: accepts a genuine top-up and advances the collateral`,
+      `${SEAM} :: rejects a top-up revealing a foreign script without moving the tracking`,
+    ],
+    note:
+      'the rule is only as strong as the store it changes, so every assertion ' +
+      'pairs the fact with getIdentityByOwner rather than with the returned fact ' +
+      'alone. The rejected cases assert the store is byte-for-byte unchanged, ' +
+      'because an identity recorded against a covenant that never ran is the ' +
+      'failure this requirement exists to prevent.',
+  },
+  'SPEC-008/RF-V13': {
+    tests: [
+      `${SEAM} :: still recognizes a legacy genesis, and gives it no identity`,
+      `${SEAM} :: withholds standing from a vault genesis whose output is a plain P2PKH`,
+    ],
+    note:
+      'both halves in one test: the legacy fact is still returned, so nothing is ' +
+      'deprecated, while getIdentityByOwner finds nothing, so nothing is granted. ' +
+      'The second test is the same distinction reached from the other side — a ' +
+      'genesis whose covenant output was swapped for a P2PKH is indistinguishable ' +
+      'from the legacy form by shape, and degrades to a fact with no standing ' +
+      'instead of to an identity.',
+  },
+  'SPEC-009/RF-W52': {
+    tests: [
+      `${SEAM} :: accepts a genuine vault genesis and establishes an identity`,
+      `${SEAM} :: withholds standing from a vault genesis whose output is a plain P2PKH`,
+    ],
+    note:
+      'the recognition side of RF-V12, showing the bytes match before the standing ' +
+      'is granted and the standing is withheld when they do not.',
   },
   'SPEC-009/RF-W53': {
     tests: [
       `${BINDING} :: emits no binding verdict for a legacy genesis, instead of a failed one`,
+      `${SEAM} :: still recognizes a legacy genesis, and gives it no identity`,
     ],
     note:
       'the legacy form is out of scope for binding and stays recognized. The test ' +
@@ -409,23 +458,10 @@ export const UNCOVERED: Readonly<Record<string, Uncovered>> = {
     why: 'A prohibition, not a behaviour: no on-chain rule may encode a value judgment. An assertion cannot prove the absence of a class of code. Verified by enumerating all 60 require statements in the three covenants, recorded in CONSTITUTION-AUDIT.md Article 1.',
     fix: 'verified by inspection; not convertible into a test',
   },
-  // --- Binding verification, declared before it was implemented --------------
-  // These four are the honest state of section 12 as of this commit: the module
-  // and its tests exist, and the wire to the recognizer does not. Recording them
-  // as uncovered is the point — a requirement mapped to a test that never
-  // exercises it would be worse than a gap.
-  'SPEC-008/RF-V12': {
-    why: 'The rule that only a bound genesis establishes an identity is specified and the binding check it rests on is implemented and tested, but the recognizer does not yet consume the verdict: indexRawTransaction still returns the shape regardless. Nothing can assert the rule end to end while the last link is missing.',
-    fix: 'wire binding into indexRawTransaction as an opt-in flag, then assert that an unbound vault genesis yields no identity',
-  },
-  'SPEC-008/RF-V13': {
-    why: 'The recognition half is covered (schema_conformance validates a legacy identity genesis) and the binding half by SPEC-009/RF-W53. What no test can assert yet is the absence of an identity, because the SDK has no notion of one to assert about.',
-    fix: 'comes with RF-V12: an identity-availability query over the store, tested against a legacy and a bound genesis side by side',
-  },
-  'SPEC-009/RF-W52': {
-    why: 'Same gap as SPEC-008/RF-V12 seen from the recognition side, and the same fix. The module proves the bytes match; nothing yet consumes that to withhold an identity.',
-    fix: 'covered by the same change that covers RF-V12',
-  },
+  // --- Binding verification, opt-in by construction ---------------------------
+  // RF-V12, RF-V13 and RF-W52 are cited above: the module's verdict is now
+  // consumed by indexRawTransaction, and the store has an identity to withhold.
+  // What remains here is what section 12 permits or claims rather than does.
   'SPEC-009/RF-W46': {
     why: 'A permission, not a behaviour. "MAY verify binding" cannot fail, so a test for it would assert that an option exists in the type system at most. Its substance is tested under RF-W47 and RF-W49.',
     fix: 'verified by the RF-W47 and RF-W49 citations; not convertible into a separate test',
@@ -435,8 +471,8 @@ export const UNCOVERED: Readonly<Record<string, Uncovered>> = {
     fix: 'verified by inspection of the module header and SPEC-009 section 12.3, both of which state the limit; not convertible into a test',
   },
   'SPEC-009/RF-W54': {
-    why: 'The capability declaration is a claim an implementation makes about itself, and the honest test is that the claim is false when a covenant-backed path is left unverified. No such declaration exists yet, so there is nothing to test.',
-    fix: 'covered by the change that covers RF-V52; then assert that declaring the capability without applying section 12 everywhere is rejected',
+    why: 'The capability declaration is a claim an implementation makes about itself, and the honest test is that the claim is false when a covenant-backed path is left unverified. The verdict is now consumed at every covenant-backed path in SPEC-009 section 12, but no implementation declares that capability anywhere, so there is still nothing to assert a false declaration against.',
+    fix: 'add a declared capability alongside the binding option, then assert that declaring it while any covenant-backed path stays unbound is rejected',
   },
 };
 
