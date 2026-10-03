@@ -65,7 +65,7 @@
     "receiptGenesis": {
       "source": "contracts/receipt_genesis.cash",
       "artifact": "artifacts/receipt_genesis.json",
-      "fingerprint": "a6ac8698ce1b79df7fa5d63fb2f8755504017eb81de0f73dc7e5454d5285c063"
+      "fingerprint": "b98522f1b1d68bd67778db6c181df4e3943a0846110abbd6a1bf2a3f56d1e752"
     }
   },
 

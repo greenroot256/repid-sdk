@@ -198,8 +198,9 @@ describe('a genuine covenant spend is bound to the canonical script', () => {
     );
 
     expect(result.bound).toBe(true);
-    // Two pushed pkh values plus 122 bytes of bytecode.
-    expect(result.revealedLength).toBe(164);
+    // Two pushed pkh values plus 126 bytes of bytecode (122 before 0.2.0 added
+    // the distinct-parties check).
+    expect(result.revealedLength).toBe(168);
   });
 
   it('pushes the constructor arguments in reverse declaration order', async () => {

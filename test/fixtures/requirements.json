@@ -15,8 +15,8 @@
     ]
   },
   "totals": {
-    "declarations": 168,
-    "distinctIdentifiers": 139,
+    "declarations": 170,
+    "distinctIdentifiers": 141,
     "collidingIdentifiers": 9,
     "bySpecification": {
       "SPEC-001": 9,
@@ -25,8 +25,8 @@
       "SPEC-004": 5,
       "SPEC-005": 13,
       "SPEC-006": 4,
-      "SPEC-008": 72,
-      "SPEC-009": 54
+      "SPEC-008": 73,
+      "SPEC-009": 55
     }
   },
   "collisions": [
@@ -875,6 +875,17 @@
       "text": "When a receipt is issued, the system must require the joint signature of both parties in the genesis transaction."
     },
     {
+      "key": "SPEC-008/RF-O821",
+      "id": "RF-O821",
+      "spec": "SPEC-008",
+      "specFile": "SPEC-008-repid-protocol.md",
+      "section": "4.3 Receipt",
+      "paragraph": "",
+      "kind": "Ubiquity",
+      "line": 132,
+      "text": "The receipt's genesis covenant must require `partyA` and `partyB` to be **distinct** addresses. A self-receipt is not a Receipt: both Rating Rights would be locked to the same P2PKH, and the Receipt would attest that a wallet interacted with itself, which is precisely the claim a reputation protocol must not let it make."
+    },
+    {
       "key": "SPEC-008/RF-O09",
       "id": "RF-O09",
       "spec": "SPEC-008",
@@ -882,7 +893,7 @@
       "section": "4.3 Receipt",
       "paragraph": "",
       "kind": "Ubiquity",
-      "line": 132,
+      "line": 133,
       "text": "The receipt's genesis must contain exactly four outputs: receipt (output 0), `partyA`'s Rating Right (output 1), `partyB`'s Rating Right (output 2) and P2PKH change to `partyA` (output 3), all four of the same category except the change, and all without fungibles."
     },
     {
@@ -893,7 +904,7 @@
       "section": "4.3 Receipt",
       "paragraph": "",
       "kind": "Ubiquity",
-      "line": 133,
+      "line": 134,
       "text": "The receipt must be locked to `partyA`'s P2PKH and have an empty `nftCommitment`; `partyA`'s Rating Right must have `commitment = partyB's pkh`, and `partyB`'s `commitment = partyA's pkh` (cross relationship)."
     },
     {
@@ -904,7 +915,7 @@
       "section": "4.3 Receipt",
       "paragraph": "",
       "kind": "Ubiquity",
-      "line": 134,
+      "line": 135,
       "text": "The receipt's change output must be `partyA`'s P2PKH and carry no tokens of the issued category."
     },
     {
@@ -915,7 +926,7 @@
       "section": "4.4 Rating",
       "paragraph": "",
       "kind": "Ubiquity",
-      "line": 138,
+      "line": 139,
       "text": "The protocol must represent each Rating Right as a single-use UTXO; its spend must implicitly burn the NFT, guaranteeing at most one rating per participant per receipt."
     },
     {
@@ -926,7 +937,7 @@
       "section": "4.4 Rating",
       "paragraph": "",
       "kind": "Events",
-      "line": 139,
+      "line": 140,
       "text": "When a rating is issued, the system must include an `OP_RETURN` with the `REPID_RATING1` tag and an integer score in the 1–5 range."
     },
     {
@@ -937,7 +948,7 @@
       "section": "4.4 Rating",
       "paragraph": "",
       "kind": "Undesired Behavior",
-      "line": 140,
+      "line": 141,
       "text": "If the score is outside the 1–5 range, then the fact must be recognized with `valid: false` (the emitted transaction is not considered a valid rating)."
     },
     {
@@ -948,7 +959,7 @@
       "section": "4.5 Platform validation and Trust Link",
       "paragraph": "",
       "kind": "Events",
-      "line": 144,
+      "line": 145,
       "text": "When a platform validates an interaction, the system must spend its own P2PKH UTXO and include an `OP_RETURN` with the `REPID_PLATFORM1` tag and the receipt's txid (32 bytes)."
     },
     {
@@ -959,7 +970,7 @@
       "section": "4.5 Platform validation and Trust Link",
       "paragraph": "",
       "kind": "Events",
-      "line": 145,
+      "line": 146,
       "text": "When A declares trust in B, the system must spend A's P2PKH UTXO and include an `OP_RETURN` with the `REPID_TRUST1` tag and B's pkh (20 bytes)."
     },
     {
@@ -970,7 +981,7 @@
       "section": "4.5 Platform validation and Trust Link",
       "paragraph": "",
       "kind": "Undesired Behavior",
-      "line": 146,
+      "line": 147,
       "text": "If a Trust Link declares trust about its own `trusterPkh` (self-trust), then the fact must be recognized with `valid: false`."
     },
     {
@@ -981,7 +992,7 @@
       "section": "4.6 Mutability",
       "paragraph": "",
       "kind": "Ubiquity",
-      "line": 150,
+      "line": 151,
       "text": "Identity, receipt and Rating Right NFTs must not be mutable nor re-mintable; the category, once created, must not be re-issued."
     },
     {
@@ -992,7 +1003,7 @@
       "section": "4.6 Mutability",
       "paragraph": "",
       "kind": "Ubiquity",
-      "line": 151,
+      "line": 152,
       "text": "An on-chain fact must not be modifiable nor deletable; only new facts can be issued (e.g. burning an identity does not erase its genesis)."
     },
     {
@@ -1003,7 +1014,7 @@
       "section": "4.6 Mutability",
       "paragraph": "",
       "kind": "Prohibition",
-      "line": 152,
+      "line": 153,
       "text": "No on-chain rule must encode a value judgment (reputation, trust, weighting)."
     },
     {
@@ -1014,7 +1025,7 @@
       "section": "5.2 Requirements (EARS)",
       "paragraph": "",
       "kind": "Ubiquity",
-      "line": 176,
+      "line": 177,
       "text": "The system must reconstruct facts from raw hex without running the VM or relying on signature validation."
     },
     {
@@ -1025,7 +1036,7 @@
       "section": "5.2 Requirements (EARS)",
       "paragraph": "",
       "kind": "Ubiquity",
-      "line": 177,
+      "line": 178,
       "text": "Recognition must be deterministic: the same transaction must always produce the same fact, or none."
     },
     {
@@ -1036,7 +1047,7 @@
       "section": "5.2 Requirements (EARS)",
       "paragraph": "",
       "kind": "Undesired Behavior",
-      "line": 178,
+      "line": 179,
       "text": "If a transaction matches no known shape, then the system must not emit any fact."
     },
     {
@@ -1047,7 +1058,7 @@
       "section": "5.2 Requirements (EARS)",
       "paragraph": "",
       "kind": "State",
-      "line": 179,
+      "line": 180,
       "text": "The system must keep the state that the chain does not retain by itself: live Rating Right outpoints, indexed receipt txids and tracked vault outpoints."
     },
     {
@@ -1058,7 +1069,7 @@
       "section": "5.2 Requirements (EARS)",
       "paragraph": "",
       "kind": "Events",
-      "line": 180,
+      "line": 181,
       "text": "When a tracked Rating Right is spent and the category does not reappear, the system must emit `RATING_ISSUED` (or `IDENTITY_BURNED` for the identity vault) and remove the corresponding tracking."
     },
     {
@@ -1069,7 +1080,7 @@
       "section": "5.2 Requirements (EARS)",
       "paragraph": "",
       "kind": "Events",
-      "line": 181,
+      "line": 182,
       "text": "When a tracked vault outpoint is spent and the category reappears, the system must emit `IDENTITY_COLLATERAL_TOP_UP` and move the tracking to the new outpoint."
     },
     {
@@ -1080,7 +1091,7 @@
       "section": "5.2 Requirements (EARS)",
       "paragraph": "",
       "kind": "State",
-      "line": 182,
+      "line": 183,
       "text": "The system must distinguish an identity vault spend before a genesis, because a top-up re-issues the same NFT with the same shape as a genesis and only outpoint tracking tells them apart."
     },
     {
@@ -1091,7 +1102,7 @@
       "section": "5.2 Requirements (EARS)",
       "paragraph": "",
       "kind": "Undesired Behavior",
-      "line": 183,
+      "line": 184,
       "text": "If a platform validation references a receipt that is not indexed, then the system must mark the fact with `valid: false`."
     },
     {
@@ -1102,7 +1113,7 @@
       "section": "5.2 Requirements (EARS)",
       "paragraph": "",
       "kind": "Undesired Behavior",
-      "line": 184,
+      "line": 185,
       "text": "If a collateral fact does not preserve the NFT category/commitment or the new collateral is lower than the registered one, then the system must mark it with `valid: false`."
     },
     {
@@ -1113,7 +1124,7 @@
       "section": "5.2 Requirements (EARS)",
       "paragraph": "",
       "kind": "Ubiquity",
-      "line": 185,
+      "line": 186,
       "text": "The system must persist the index state so it survives process restarts."
     },
     {
@@ -1124,7 +1135,7 @@
       "section": "5.2 Requirements (EARS)",
       "paragraph": "",
       "kind": "State",
-      "line": 186,
+      "line": 187,
       "text": "The system must accept that order of appearance matters: a validation can only be validated against already-indexed receipts (deliberate restriction, not hidden)."
     },
     {
@@ -1135,7 +1146,7 @@
       "section": "5.2 Requirements (EARS)",
       "paragraph": "",
       "kind": "Undesired Behavior",
-      "line": 187,
+      "line": 188,
       "text": "If a genesis transaction matches the shape of a §3 genesis but is not bound to the canonical covenant that §4 requires for its type, then the system must not treat it as having created a RepID identity, a Receipt or any Rating Rights. A shape match alone establishes none of them, because CashTokens lets any script mint a category."
     },
     {
@@ -1146,7 +1157,7 @@
       "section": "5.2 Requirements (EARS)",
       "paragraph": "",
       "kind": "Events",
-      "line": 188,
+      "line": 189,
       "text": "The system must still recognize an `IDENTITY_GENESIS` in legacy form — the NFT issued straight to a P2PKH, with no covenant and no collateral — so that the history of identities minted before the vault remains readable, and must not treat it as creating a RepID identity. Legacy genesis is a recorded fact, not an issuance: it is neither current nor deprecated, and it is not the way a new identity is created."
     },
     {
@@ -1157,7 +1168,7 @@
       "section": "6. Reputation Interpretation",
       "paragraph": "**Non-normative for the core.** This section sets the boundary: what an implementation may do without becoming protocol.",
       "kind": "Ubiquity",
-      "line": 194,
+      "line": 195,
       "text": "Reputation interpretation must operate exclusively on recognized facts and must not modify the facts or their validity."
     },
     {
@@ -1168,7 +1179,7 @@
       "section": "6. Reputation Interpretation",
       "paragraph": "**Non-normative for the core.** This section sets the boundary: what an implementation may do without becoming protocol.",
       "kind": "Prohibition",
-      "line": 195,
+      "line": 196,
       "text": "No interpretation must be a conformity requirement of the protocol; two implementations may compute different reputation over the same facts."
     },
     {
@@ -1179,7 +1190,7 @@
       "section": "6. Reputation Interpretation",
       "paragraph": "**Non-normative for the core.** This section sets the boundary: what an implementation may do without becoming protocol.",
       "kind": "Ubiquity",
-      "line": 196,
+      "line": 197,
       "text": "Interpretation must be able to distinguish valid from invalid facts and must not grant value to the latter."
     },
     {
@@ -1190,7 +1201,7 @@
       "section": "6. Reputation Interpretation",
       "paragraph": "**Non-normative for the core.** This section sets the boundary: what an implementation may do without becoming protocol.",
       "kind": "Options",
-      "line": 197,
+      "line": 198,
       "text": "Wherever an implementation defines a confidence index, it must be local, auditable down to the fact that originates it, and must not be presented as a protocol fact."
     },
     {
@@ -1201,7 +1212,7 @@
       "section": "7.2 Requirements (EARS)",
       "paragraph": "",
       "kind": "Ubiquity",
-      "line": 217,
+      "line": 218,
       "text": "The protocol must prevent double rating per participant and per receipt through the Rating Right's single-spend semantics."
     },
     {
@@ -1212,7 +1223,7 @@
       "section": "7.2 Requirements (EARS)",
       "paragraph": "",
       "kind": "Undesired Behavior",
-      "line": 218,
+      "line": 219,
       "text": "If a Trust Link is self-trust, the system must mark it invalid."
     },
     {
@@ -1223,7 +1234,7 @@
       "section": "7.2 Requirements (EARS)",
       "paragraph": "",
       "kind": "Undesired Behavior",
-      "line": 219,
+      "line": 220,
       "text": "If a score is outside the 1–5 range, the system must mark it invalid."
     },
     {
@@ -1234,7 +1245,7 @@
       "section": "7.2 Requirements (EARS)",
       "paragraph": "",
       "kind": "Prohibition",
-      "line": 220,
+      "line": 221,
       "text": "The protocol must not present any anti-sybil, anti-spam or anti-collusion mitigation as guaranteed if it depends on the interpretation layer."
     },
     {
@@ -1245,7 +1256,7 @@
       "section": "7.2 Requirements (EARS)",
       "paragraph": "",
       "kind": "Ubiquity",
-      "line": 221,
+      "line": 222,
       "text": "The known limitations of §7.1 must be explicitly documented and must not be claimed as solved."
     },
     {
@@ -1256,7 +1267,7 @@
       "section": "8. Interoperability and Extensibility",
       "paragraph": "",
       "kind": "Ubiquity",
-      "line": 225,
+      "line": 226,
       "text": "The protocol must use a readable, versionable tag space (`REPID_*`) to distinguish its `OP_RETURN`s from other uses of the chain."
     },
     {
@@ -1267,7 +1278,7 @@
       "section": "8. Interoperability and Extensibility",
       "paragraph": "",
       "kind": "Ubiquity",
-      "line": 226,
+      "line": 227,
       "text": "The protocol must separate the **core** (identity, receipt, Rating Right, rating) from the **extensions** (platform validation, Trust Link), so that an implementation can adopt extensions without breaking the core."
     },
     {
@@ -1278,7 +1289,7 @@
       "section": "8. Interoperability and Extensibility",
       "paragraph": "",
       "kind": "Options",
-      "line": 227,
+      "line": 228,
       "text": "Wherever an application contributes its own metadata, it must remain off-chain; only the resulting receipt is anchored on-chain."
     },
     {
@@ -1289,7 +1300,7 @@
       "section": "8. Interoperability and Extensibility",
       "paragraph": "",
       "kind": "Ubiquity",
-      "line": 228,
+      "line": 229,
       "text": "The protocol must allow different applications and platforms to operate over the same facts without prior coordination, using the §3 schemas."
     },
     {
@@ -1300,7 +1311,7 @@
       "section": "8. Interoperability and Extensibility",
       "paragraph": "",
       "kind": "Options",
-      "line": 229,
+      "line": 230,
       "text": "Wherever new mechanisms are added (new identities, new validations), they must be declared as extensions and must not alter the existing facts."
     },
     {
@@ -1311,7 +1322,7 @@
       "section": "9.2 Requirements (EARS)",
       "paragraph": "",
       "kind": "Ubiquity",
-      "line": 249,
+      "line": 250,
       "text": "An issuance-conformant implementation must produce the §4 artifacts with the invariants defined there."
     },
     {
@@ -1322,7 +1333,7 @@
       "section": "9.2 Requirements (EARS)",
       "paragraph": "",
       "kind": "Ubiquity",
-      "line": 250,
+      "line": 251,
       "text": "A recognition-conformant implementation must emit the §3 facts with the fields defined there and apply the §5 validity semantics."
     },
     {
@@ -1333,7 +1344,7 @@
       "section": "9.2 Requirements (EARS)",
       "paragraph": "",
       "kind": "Undesired Behavior",
-      "line": 251,
+      "line": 252,
       "text": "If a transaction is not a RepID fact, a conformant implementation must not emit any fact."
     },
     {
@@ -1344,7 +1355,7 @@
       "section": "9.2 Requirements (EARS)",
       "paragraph": "",
       "kind": "Ubiquity",
-      "line": 252,
+      "line": 253,
       "text": "An implementation must not declare itself conformant if it introduces an on-chain value judgment or presents a known §7 limitation as a guarantee."
     },
     {
@@ -1355,7 +1366,7 @@
       "section": "9.2 Requirements (EARS)",
       "paragraph": "",
       "kind": "Ubiquity",
-      "line": 253,
+      "line": 254,
       "text": "Conformity must be verified with real executable evidence (tests) mapped in Annex B, not with descriptions."
     },
     {
@@ -1366,7 +1377,7 @@
       "section": "9.2 Requirements (EARS)",
       "paragraph": "",
       "kind": "Options",
-      "line": 254,
+      "line": 255,
       "text": "Wherever an implementation differs in non-normative layers (UI, persistence, network, reputation), that difference must not affect protocol conformity."
     },
     {
@@ -1821,6 +1832,17 @@
       "text": "Output 0 (the Receipt) must have an **empty** commitment and be locked to `partyA`'s P2PKH; outputs 1 and 2 (the Rating Rights) must each have a **non-empty** commitment. The commitments must be the **cross** pair: the Rating Right in output 1 commits to `partyB`'s `pkh` and the one in output 2 to `partyA`'s `pkh`; otherwise no fact."
     },
     {
+      "key": "SPEC-009/RF-W55",
+      "id": "RF-W55",
+      "spec": "SPEC-009",
+      "specFile": "SPEC-009-repid-wire-format-and-recognition.md",
+      "section": "9.2 `RECEIPT_GENESIS`",
+      "paragraph": "",
+      "kind": "Events",
+      "line": 341,
+      "text": "Outputs 1 and 2 must be locked to **two different** P2PKH addresses; a receipt genesis whose Rating Rights name the same party must not be recognized. The cross pair of RF-W40 does not imply this on its own: when both parties are one address, each commitment correctly names the other, so RF-W40 is satisfied by a self-receipt. This is a fact about the outputs and is required regardless of whether binding verification is applied (SPEC-008 RF-O821)."
+    },
+    {
       "key": "SPEC-009/RF-W41",
       "id": "RF-W41",
       "spec": "SPEC-009",
@@ -1828,7 +1850,7 @@
       "section": "10. Conformance",
       "paragraph": "",
       "kind": "Ubiquity",
-      "line": 341,
+      "line": 348,
       "text": "A **recognition-conformant** implementation must satisfy §3, §4, §5, §6, §7, §8 and §9: the same raw hex against the same index state must produce the same fact, with the same field values, the same `valid` result, and the same state transitions as the reference implementation."
     },
     {
@@ -1839,7 +1861,7 @@
       "section": "10. Conformance",
       "paragraph": "",
       "kind": "Ubiquity",
-      "line": 344,
+      "line": 351,
       "text": "An implementation must not declare recognition conformity if it accepts a push encoding rejected by §3, a payload length rejected by §4, or a `RATING_ISSUED` without a tracked Rating Right."
     },
     {
@@ -1850,7 +1872,7 @@
       "section": "10. Conformance",
       "paragraph": "",
       "kind": "Ubiquity",
-      "line": 347,
+      "line": 354,
       "text": "Where an implementation deviates from the reference in a **non-normative** layer (storage engine, network, user interface, reputation interpretation), the deviation must not change recognition results."
     },
     {
@@ -1861,7 +1883,7 @@
       "section": "10. Conformance",
       "paragraph": "",
       "kind": "Ubiquity",
-      "line": 349,
+      "line": 356,
       "text": "Conformity must be demonstrated with real executable evidence, not with description (Constitution Article 3, SPEC-008 RF-C05)."
     },
     {
@@ -1872,7 +1894,7 @@
       "section": "12.1 Why a comparison is possible at all",
       "paragraph": "the expected script is fully determined.",
       "kind": "Options",
-      "line": 436,
+      "line": 443,
       "text": "An implementation **MAY** verify that a covenant-backed fact was produced by the canonical covenant. This verification is **optional** and is not part of recognition conformity (RF-W41). A recognizer that does not apply it is unaffected by this section, and remains limited by §11 as that section states."
     },
     {
@@ -1883,7 +1905,7 @@
       "section": "12.2 The deployed script layout",
       "paragraph": "",
       "kind": "Ubiquity",
-      "line": 446,
+      "line": 453,
       "text": "Where an implementation applies binding verification, the expected redeem script **MUST** be reconstructed as the canonical bytecode of the named covenant preceded by its serialized constructor arguments, each argument introduced by its own minimal push and in **reverse declaration order** (the stack is LIFO), and **MUST NOT** be compared against a single hard-coded script hash, because every deployment has a different one. An implementation **MUST NOT** derive the expected script from the bytes it is verifying."
     },
     {
@@ -1894,7 +1916,7 @@
       "section": "12.2 The deployed script layout",
       "paragraph": "",
       "kind": "Options",
-      "line": 456,
+      "line": 463,
       "text": "Where an implementation applies binding verification, the script hash **MAY** be committed in either of the two P2SH forms — a 35-byte `OP_HASH256 <32> OP_EQUAL` or a 23-byte `OP_HASH160 <20> OP_EQUAL` — and the implementation **MUST** select the hash function from the width it actually found. It **MUST NOT** assume one form and silently fail on the other."
     },
     {
@@ -1905,7 +1927,7 @@
       "section": "12.2 The deployed script layout",
       "paragraph": "",
       "kind": "Undesired Behavior",
-      "line": 460,
+      "line": 467,
       "text": "If an implementation applies binding verification and the covenant-backed bytes do not match the canonical covenant, then it **MUST** emit **no fact** (SPEC-008 RF-V03, RF-C03) — not an error, not a partial result, and **not** a fact marked `valid: false`."
     },
     {
@@ -1916,7 +1938,7 @@
       "section": "12.2 The deployed script layout",
       "paragraph": "",
       "kind": "Prohibition",
-      "line": 472,
+      "line": 479,
       "text": "An implementation that applies binding verification **MUST NOT** require it of `TRUST_LINK`, `PLATFORM_CONFIRMATION` or `RATING_ISSUED`. Those three are plain P2PKH spends carrying an `OP_RETURN`, and they have no covenant to check. That is correct rather than a gap: they are unilateral and need no authorization beyond the spender's own signature."
     },
     {
@@ -1927,7 +1949,7 @@
       "section": "12.3 What binding does not establish",
       "paragraph": "the VM does, and the difference is stated rather than blurred.",
       "kind": "Prohibition",
-      "line": 482,
+      "line": 489,
       "text": "Binding verification **MUST NOT** be described as verifying signatures, validating scripts, or establishing that a transaction is valid in any sense beyond its bytes matching the canonical covenant. It does not run the VM (RF-W27) and re-checks nothing the network already enforced."
     },
     {
@@ -1938,7 +1960,7 @@
       "section": "12.3 What binding does not establish",
       "paragraph": "the VM does, and the difference is stated rather than blurred.",
       "kind": "Options",
-      "line": 487,
+      "line": 494,
       "text": "An implementation that establishes a RepID identity, a Receipt or Rating Rights (SPEC-008 RF-V12) **MUST** base that on binding, and **MUST NOT** base it on a shape match alone. A recognizer that does not apply this section may still report the shape, and must then be understood to make no claim about identities at all."
     },
     {
@@ -1949,7 +1971,7 @@
       "section": "12.3 What binding does not establish",
       "paragraph": "the VM does, and the difference is stated rather than blurred.",
       "kind": "Events",
-      "line": 492,
+      "line": 499,
       "text": "An `IDENTITY_GENESIS` in legacy form (SPEC-008 RF-V13) is **out of scope** for this section and **MUST NOT** be rejected by it. There is no covenant in that form, so there is nothing to bind, and the fact stays recognized exactly as §9.1 requires. An implementation that applies binding must therefore distinguish \"no covenant to check\" from \"covenant does not match\"."
     },
     {
@@ -1960,7 +1982,7 @@
       "section": "12.4 Conformance",
       "paragraph": "",
       "kind": "Options",
-      "line": 501,
+      "line": 508,
       "text": "An implementation **MAY** declare a **binding-verified** capability, separate from recognition conformity (RF-W41), asserting that it applies §12 to every fact that has a covenant behind it. It **MUST NOT** declare the capability while leaving any covenant-backed path unverified, and the declaration **MUST** be accompanied by the executable evidence required by RF-W44."
     }
   ]

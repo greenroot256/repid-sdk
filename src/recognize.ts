@@ -297,6 +297,18 @@ function recognizeReceiptGenesis(
   // of commitments meaningful rather than decorative.
   if (partyARates !== partyBPkh || partyBRates !== partyAPkh) return null;
 
+  // The two Rating Rights must be locked to two different addresses, or there is
+  // no counterparty. A self-receipt satisfies every check above — both
+  // commitments would name the same pkh — and would attest that a wallet
+  // interacted with itself.
+  //
+  // Read from the outputs, so it holds with binding off as well: it is a fact
+  // about the shape, not about whether a covenant ran. The covenant refuses it
+  // too (SPEC-008 RF-O08a), but the genesis that predates that check would
+  // still be read off the chain, and a Receipt between a party and itself is not
+  // something to publish on the strength of an old covenant's silence.
+  if (partyAPkh === partyBPkh) return null;
+
   return {
     type: 'RECEIPT_GENESIS',
     txid,

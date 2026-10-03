@@ -49,8 +49,8 @@
         "name": "cashc",
         "version": "0.13.2"
       },
-      "fingerprint": "a6ac8698ce1b79df7fa5d63fb2f8755504017eb81de0f73dc7e5454d5285c063",
-      "artifactFingerprint": "a6ac8698ce1b79df7fa5d63fb2f8755504017eb81de0f73dc7e5454d5285c063",
+      "fingerprint": "b98522f1b1d68bd67778db6c181df4e3943a0846110abbd6a1bf2a3f56d1e752",
+      "artifactFingerprint": "b98522f1b1d68bd67778db6c181df4e3943a0846110abbd6a1bf2a3f56d1e752",
       "constructorInputs": [
         {
           "name": "partyAPkh",
@@ -61,9 +61,9 @@
           "type": "bytes20"
         }
       ],
-      "bytecodeHex": "5279a9788872ad5279a952798872adc0c9009dc0c8c4549d00d1788800d3009d00cd0376a91453797e0288ac7e8851d1788851d3009d51d253798851cd0376a91453797e0288ac7e8852d1788852d3009d52d252798852cd0376a914547a7e0288ac7e8853d3009d53d187916953cd0376a9147b7e0288ac7e87",
-      "bytecodeBytes": 122,
-      "hash160BytecodeOnly": "3465bb0ab457d4ae7753944ef326ce19a31fcbf0",
+      "bytecodeHex": "6e8791695279a9788872ad5279a952798872adc0c9009dc0c8c4549d00d1788800d3009d00cd0376a91453797e0288ac7e8851d1788851d3009d51d253798851cd0376a91453797e0288ac7e8852d1788852d3009d52d252798852cd0376a914547a7e0288ac7e8853d3009d53d187916953cd0376a9147b7e0288ac7e87",
+      "bytecodeBytes": 126,
+      "hash160BytecodeOnly": "51fc1794d9c5188432250b0507015fe85476a9c8",
       "note": "The deployed script is bytecodeHex followed by the serialized constructor arguments, in the order declared by constructorInputs. Because both covenants take pkh parameters, every instance has a different script hash."
     }
   }

@@ -330,14 +330,16 @@ export const COVERED: Readonly<Record<string, Covered>> = {
       `${BINDING} :: pushes the constructor arguments in reverse declaration order`,
       `${BINDING} :: differs per owner, which is why the expected script is rebuilt`,
       `${BINDING} :: rejects a scriptSig whose last push is the covenant body without its args`,
-      `${REAL} :: recognizes both identity genesis transactions and binds each to the vault`,
-      `${REAL} :: recognizes the receipt genesis and binds it to the receipt covenant`,
+      `${REAL} :: still binds the identity covenants, which this version did not change`,
     ],
     note:
       'the expected script is rebuilt from the canonical bytecode plus the pkh ' +
       'values the recognizer already read, never compared against a constant. The ' +
       'real-chain half matters because it is compiled and broadcast by a toolchain ' +
-      'that did not write the check.',
+      'that did not write the check. It covers the two identity covenants rather ' +
+      'than the receipt: adding the distinct-parties rule changed only the receipt ' +
+      'bytecode, so the receipt transaction on chain was minted by the previous ' +
+      'one and is cited under RF-W49 as a known consequence.',
   },
   'SPEC-009/RF-W48': {
     tests: [
@@ -361,13 +363,18 @@ export const COVERED: Readonly<Record<string, Covered>> = {
       `${SEAM} :: rejects a vault genesis revealing a foreign script, leaving no trace`,
       `${SEAM} :: rejects a receipt genesis that reveals the body without its arguments`,
       `${SEAM} :: rejects a top-up revealing a foreign script without moving the tracking`,
+      `${REAL} :: records that the receipt genesis on chain predates the distinct-parties rule`,
     ],
     note:
       'the first tests are the impostors the base recognizer accepts today, which ' +
       'is what makes them worth asserting: the vector is the live gap, not a ' +
       'hypothetical one. The seam tests are the same impostors built by rewriting a ' +
       'real covenant transaction, run through indexRawTransaction itself, which is ' +
-      'the only place the verdict is actually consumed.',
+      'the only place the verdict is actually consumed. The last one is not an ' +
+      'impostor but a consequence: a real receipt broadcast under the 0.1.0 ' +
+      'covenant no longer binds against the 0.2.0 bytecode. It is asserted as ' +
+      'such rather than deleted, because a check that quietly stops covering ' +
+      'history is worse than one that reports that it does.',
   },
   'SPEC-009/RF-W50': {
     tests: [
@@ -427,6 +434,27 @@ export const COVERED: Readonly<Record<string, Covered>> = {
       'also pins why the order matters: a P2PKH spend ends in a 65-byte signature, ' +
       'so reading the unlocking script first would make a legacy genesis ' +
       'indistinguishable from a vault instantiated for the wrong owner.',
+  },
+  'SPEC-008/RF-O821': {
+    tests: [
+      `${SHAPE} :: rejects a receipt genesis whose two Rating Rights name the same party`,
+    ],
+    note:
+      'the recognizer half. The covenant half is not asserted here for the same ' +
+      'reason as RF-O04: cashc compiles the require, and this repository has no ' +
+      'harness that runs the Bitcoin VM against it. What is asserted is that the ' +
+      'recognizer refuses the shape with binding off, because it is readable from ' +
+      'the outputs and a genesis minted under the 0.1.0 covenant is still on chain.',
+  },
+  'SPEC-009/RF-W55': {
+    tests: [
+      `${SHAPE} :: rejects a receipt genesis whose two Rating Rights name the same party`,
+    ],
+    note:
+      'the one receipt impostor that satisfies RF-W40: with one party, each ' +
+      'commitment correctly names the other, so the cross pairing holds and only ' +
+      'the distinctness requirement catches it. Required with binding off, since ' +
+      'it is a fact about the outputs rather than about whether a covenant ran.',
   },
 };
 

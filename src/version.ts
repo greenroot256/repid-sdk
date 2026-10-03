@@ -28,13 +28,21 @@ export const SDK_VERSION = '0.1.0';
 /**
  * The protocol versions this build implements, as stated by SPEC-010 §5.
  *
- * A single entry today, because there is a single protocol version and this
- * recognizer was written against it. When a `MAJOR` boundary is crossed, the
- * historical fact still has to be readable (SPEC-010 §7), so the honest move is
- * to add the earlier version here alongside the new one rather than to replace
- * it, until no supported consumer needs the old rules.
+ * Only `0.2.0`, and the replacement of `0.1.0` is deliberate rather than an
+ * oversight. SPEC-010 §4.1 records that during `0.y.z` a breaking change advances
+ * `MINOR`, so `0.1.0` and `0.2.0` are *not* two readings of the same rules: from
+ * `0.2.0` a receipt genesis naming one party as both of them is not recognized
+ * (RF-W55), and it was recognized before. Keeping `0.1.0` in this list would
+ * claim this recognizer can also read under the older rules, and it cannot — the
+ * same bytes must produce different facts under the two versions, and only one
+ * of them is what this code does.
+ *
+ * At a `MAJOR` boundary the arithmetic runs the other way: the historical fact
+ * still has to be readable (SPEC-010 §7), so the earlier version is added
+ * alongside the new one rather than replacing it, until no supported consumer
+ * needs the old rules. That is not this bump.
  */
-export const SUPPORTED_PROTOCOL_VERSIONS: readonly string[] = ['0.1.0'];
+export const SUPPORTED_PROTOCOL_VERSIONS: readonly string[] = ['0.2.0'];
 
 /**
  * Fails loudly when a protocol version is not one this build implements.

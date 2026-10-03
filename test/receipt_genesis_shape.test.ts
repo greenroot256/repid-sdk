@@ -305,6 +305,31 @@ describe('RECEIPT_GENESIS / commitments (RF-W40)', () => {
     expect(recognized(swapped)).toBeNull();
   });
 
+  it('rejects a receipt genesis whose two Rating Rights name the same party', async () => {
+    // The one impostor that satisfies every other rule. Both Rating Rights are
+    // moved to partyA's P2PKH and both commit to partyA, so the cross pairing of
+    // RF-W40 holds — when there is only one party, each right correctly names the
+    // other. Only "two different addresses" catches it.
+    //
+    // The covenant refuses this from 0.2.0 (RF-O08a), but it is a fact about the
+    // outputs, so it is refused with binding off too: a genesis minted under the
+    // older covenant is still on chain, and a Receipt between a party and itself
+    // should not be published because of it.
+    const { hex, partyA } = await mintCanonical();
+    const selfReceipt = perturbOutputs(hex, (outputs) => {
+      const rightA = outputs[1];
+      const rightB = outputs[2];
+      if (!rightA || !rightB) return;
+      rightB.lockingBytecode = new Uint8Array(rightA.lockingBytecode);
+      if (rightA.token?.nft && rightB.token?.nft) {
+        rightA.token.nft.commitment = bytes(partyA.pkhHex);
+        rightB.token.nft.commitment = bytes(partyA.pkhHex);
+      }
+    });
+
+    expect(recognized(selfReceipt)).toBeNull();
+  });
+
   it('rejects a Rating Right with an empty commitment', async () => {
     // Without a commitment the right names nobody, so the rating it authorizes
     // would have no counterparty to attach to.

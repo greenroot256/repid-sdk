@@ -125,7 +125,7 @@ describe('the real Chipnet run', () => {
     expect(owners.size).toBe(2);
   });
 
-  it('recognizes the receipt genesis and binds it to the receipt covenant', () => {
+  it('records that the receipt genesis on chain predates the distinct-parties rule', () => {
     const tx = TRANSACTIONS.find((t) => t.type === 'RECEIPT_GENESIS')!;
     const fact = replayThrough(tx.txid, 'RECEIPT_GENESIS');
     const { tx: decoded } = decodeRawTransaction(tx.hex);
@@ -141,10 +141,48 @@ describe('the real Chipnet run', () => {
       RECEIPT,
     );
 
-    expect(result.bound, `${tx.txid} did not bind: ${result.reason}`).toBe(true);
-    // 122 bytes of bytecode plus two pushed 20-byte pkh values and their two
-    // push opcodes. A real node accepted this exact script.
+    // This one does NOT bind, and the reason is worth stating rather than
+    // papering over. The transaction was broadcast from the 0.1.0 covenant, whose
+    // bytecode was 122 bytes. Protocol 0.2.0 added `require(partyAPkh !=
+    // partyBPkh)` to that same covenant, so the canonical bytecode is now 126 and
+    // no longer matches a script a real node accepted in good faith.
+    //
+    // The receipt is still a valid Receipt and the fixture is still real evidence.
+    // What changed is that binding, as currently specified, verifies against one
+    // canonical bytecode, and cannot verify history minted under an earlier one.
+    // That is a genuine open question about version-scoped binding, not a bug in
+    // the check, and it is recorded in SPEC-009 Annex B.2 rather than resolved
+    // here: the obvious fix (try every bytecode the protocol ever defined) lets a
+    // sender pick the version that makes their transaction bind, which is a
+    // decision about what binding is for.
+    expect(result.bound).toBe(false);
+    expect(result.reason).toBe('redeem-script-differs');
+
+    // The pre-0.2.0 layout exactly: 122 bytes plus two pushed 20-byte pkh values
+    // and their two push opcodes. 168 would be the 0.2.0 layout.
     expect(result.revealedLength).toBe(164);
+    expect(RECEIPT.bytecodeHex.length / 2).toBe(126);
+  });
+
+  it('still binds the identity covenants, which this version did not change', () => {
+    // The control for the test above. Adding one require() to the receipt
+    // covenant changed only the receipt: the identity genesis and vault are
+    // byte-for-byte what they were at 0.1.0, so their historical transactions
+    // still bind against the current canonical bytecode. If this ever fails, the
+    // problem is not history but the check.
+    const identities = TRANSACTIONS.filter((t) => t.type === 'IDENTITY_GENESIS');
+    expect(identities).toHaveLength(2);
+
+    for (const tx of identities) {
+      const fact = replayThrough(tx.txid, 'IDENTITY_GENESIS');
+      const { tx: decoded } = decodeRawTransaction(tx.hex);
+      const result = verifyVaultOutputBinding(
+        decoded.outputs[0]!.lockingBytecode,
+        fact.ownerPkh,
+        VAULT,
+      );
+      expect(result.bound, `${tx.txid} did not bind: ${result.reason}`).toBe(true);
+    }
   });
 
   it('recognizes both ratings, which have no covenant to bind to', () => {
