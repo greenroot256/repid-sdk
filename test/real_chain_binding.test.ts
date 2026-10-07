@@ -7,16 +7,23 @@
 // were compiled, broadcast and accepted by a BCH node that had no part in
 // writing it.
 //
-// Two properties are asserted for each real transaction:
+// Two kinds of assertion live here, and which one applies depends on the vector:
 //
-//   * base recognition still produces the fact the protocol fixture recorded,
-//     which is the non-regression half and would break if the byte layout
-//     assumptions in covenant.ts were wrong;
-//   * every fact that has a covenant behind it binds to the canonical one.
+//   * the two identity transactions are 0.3.0-compatible. They must still be
+//     recognized, and each must bind to the canonical vault bytecode. This is the
+//     positive half, and it would break if the byte layout assumptions in
+//     covenant.ts were wrong.
 //
-// The ratings are the control. They are plain P2PKH spends with an OP_RETURN and
-// have no covenant, so requiring binding on them would be a false rejection. If
-// this file ever asserts that they bind, the profile has overreached.
+//   * the receipt and the two ratings are 0.2.x-era, with their Rating Rights in
+//     plain P2PKH. Since 0.3.0 a Rating Right is a RatingRightVault UTXO, so
+//     these are negative vectors: they must NOT be recognized, with binding on and
+//     off alike. They are kept precisely so that a day someone implements a
+//     fallback to the old form, the tests say so loudly.
+//
+// The ratings used to be the control for "a rating has no covenant, so requiring
+// binding on it would be a false rejection". That control cannot come from these
+// vectors any more, since none of them is a 0.3.0 receipt; it now lives in
+// binding_recognition.test.ts, built against a current one.
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { binToHex } from '@bitauth/libauth';
@@ -27,6 +34,7 @@ import {
   toHex,
   verifyVaultOutputBinding,
   verifyRedeemScriptBinding,
+  buildP2SH32Hash,
   type RepidStateStore,
   type RepidFact,
   type CanonicalCovenant,
@@ -85,6 +93,23 @@ function replayThrough<T extends RepidFact['type']>(txid: string, as: T) {
   return produced as Extract<RepidFact, { type: T }>;
 }
 
+/**
+ * Indexes everything up to and including `txid` without asserting what each
+ * transaction produced.
+ *
+ * Used for the historical vectors, which this version deliberately does not
+ * recognize. `replayThrough` cannot serve them: it asserts every earlier
+ * transaction yielded the fact type the fixture recorded, and that is exactly
+ * the claim 0.3.0 withdraws for the receipt.
+ */
+function replayHistoryTo(txid: string) {
+  const at = TRANSACTIONS.findIndex((t) => t.txid === txid);
+  expect(at, `${txid} is not one of the vectors`).toBeGreaterThanOrEqual(0);
+  for (const tx of TRANSACTIONS.slice(0, at + 1)) {
+    indexRawTransaction(tx.hex, store);
+  }
+}
+
 describe('the real Chipnet run', () => {
   it('records five transactions that cover three fact types', () => {
     // Guards the premise of every assertion below. If the vectors are swapped
@@ -125,11 +150,8 @@ describe('the real Chipnet run', () => {
     expect(owners.size).toBe(2);
   });
 
-  it('records that the receipt genesis on chain predates the distinct-parties rule', () => {
+  it('no longer recognizes the receipt genesis on chain, whose rights were in P2PKH', () => {
     const tx = TRANSACTIONS.find((t) => t.type === 'RECEIPT_GENESIS')!;
-    // Shape only. This is the transaction as it is recorded, and the covenant
-    // that accepted it is the 0.1.0 one.
-    const fact = replayThrough(tx.txid, 'RECEIPT_GENESIS');
     const { tx: decoded } = decodeRawTransaction(tx.hex);
 
     // The covenant requires the genesis input to be vout 0 of its source, which
@@ -137,57 +159,40 @@ describe('the real Chipnet run', () => {
     const input = decoded.inputs.find((i) => i.outpointIndex === 0);
     expect(input, 'no input at vout 0').toBeDefined();
 
+    // This transaction was broadcast from the 0.1.0 covenant, which put its two
+    // Rating Rights in plain P2PKH. Since 0.3.0 a Rating Right is a
+    // RatingRightVault UTXO, so the shape check rejects it (SPEC-009 RF-W58)
+    // whether or not binding is applied. There is no fallback to the old form:
+    // accepting a right the chain cannot make single-use would reintroduce the
+    // guarantee this version moved out of the indexer and onto the chain.
+    expect(
+      indexRawTransaction(tx.hex, store, { binding: false }),
+      'RF-W58: a receipt with P2PKH rights is not a 0.3.0 Receipt',
+    ).toBeNull();
+    expect(indexRawTransaction(tx.hex, store, { binding: true })).toBeNull();
+
+    // It does not bind either. Given the correct parties *and* the P2SH32 hashes
+    // the 0.3.0 genesis would have committed to, the historic script is still a
+    // different script: it takes two constructor arguments where the canonical
+    // contract takes four. The 0.1.0 rights are P2PKH, so the parties can be read
+    // off their locking scripts.
+    const pkhOfLock = (o: { lockingBytecode: Uint8Array }) =>
+      binToHex(o.lockingBytecode.slice(3, 23));
+    const partyA = pkhOfLock(decoded.outputs[1]!);
+    const partyB = pkhOfLock(decoded.outputs[2]!);
+    const ratingRight = bytecode.contracts.ratingRight as CanonicalCovenant;
     const result = verifyRedeemScriptBinding(
       input!.unlockingBytecode,
-      [fact.ratingRights[0]!.ownerPkh, fact.ratingRights[1]!.ownerPkh],
+      [partyA, partyB, buildP2SH32Hash(ratingRight, [partyA]), buildP2SH32Hash(ratingRight, [partyB])],
       RECEIPT,
     );
-
-    // This one does NOT bind, and the reason is worth stating rather than
-    // papering over. The transaction was broadcast from the 0.1.0 covenant, whose
-    // bytecode was 122 bytes. Protocol 0.2.0 added `require(partyAPkh !=
-    // partyBPkh)` to that same covenant, so the canonical bytecode is now 126 and
-    // no longer matches a script a real node accepted in good faith.
-    //
-    // The receipt is still a valid Receipt and the fixture is still real evidence.
-    // What changed is that binding verifies against the canonical bytecode of one
-    // version, and a transaction from an earlier version does not match it.
-    //
-    // This is the specified behaviour and not work left undone: RF-W56 forbids
-    // widening the comparison to the bytecodes of other versions, because that
-    // would let a sender choose the version under which their bytes bind, and
-    // RF-W57 then requires no fact rather than a verdict. The transaction is kept
-    // as a negative fixture precisely so that this stays true, and so that a day
-    // someone implements a fallback the test says so loudly. SPEC-009 Annex B.2
-    // carries the same vector; the identities below are the positive control.
     expect(result.bound).toBe(false);
     expect(result.reason).toBe('redeem-script-differs');
 
-    // The pre-0.2.0 layout exactly: 122 bytes plus two pushed 20-byte pkh values
-    // and their two push opcodes. 168 would be the 0.2.0 layout.
+    // The historic layout exactly: 122 bytes of bytecode plus two pushed 20-byte
+    // pkh values and their two push opcodes. 230 would be the 0.3.0 layout.
     expect(result.revealedLength).toBe(164);
-    expect(RECEIPT.bytecodeHex.length / 2).toBe(126);
-
-    // And the consequence at the recognizer: with binding applied, the fact
-    // disappears rather than being reported as invalid. RF-W49 with RF-W57.
-    // The store is replayed to just before the receipt so the receipt is
-    // indexed against the history that preceded it, and it is indexed with
-    // binding applied while the store was built without it, which is the only
-    // way to ask the question: would this transaction be admitted by an
-    // implementation that verifies its bytes.
-    const at = TRANSACTIONS.findIndex((t) => t.txid === tx.txid);
-    for (const earlier of TRANSACTIONS.slice(0, at)) {
-      indexRawTransaction(earlier.hex, store);
-    }
-
-    expect(
-      indexRawTransaction(tx.hex, store, { binding: true }),
-      'RF-W57: a fact from another protocol version is unrecognized',
-    ).toBeNull();
-    expect(
-      indexRawTransaction(tx.hex, store, { binding: false }),
-      'the same transaction is still a recognized Receipt without binding',
-    ).not.toBeNull();
+    expect(RECEIPT.bytecodeHex.length / 2).toBe(122);
   });
 
   it('still binds the identity covenants, which this version did not change', () => {
@@ -211,29 +216,37 @@ describe('the real Chipnet run', () => {
     }
   });
 
-  it('recognizes both ratings, which have no covenant to bind to', () => {
+  it('does not recognize the historical ratings, whose Rating Right was never tracked', () => {
     const ratings = TRANSACTIONS.filter((t) => t.type === 'RATING_ISSUED');
     expect(ratings).toHaveLength(2);
 
     for (const tx of ratings) {
-      const fact = replayThrough(tx.txid, 'RATING_ISSUED');
-      // A rating is the control case for the profile: it is a plain P2PKH spend
-      // with an OP_RETURN and no covenant behind it, so a profile that demanded
-      // binding here would be rejecting a legitimate RepID fact. Only the
-      // resolution against the Rating Right is asserted.
-      expect(fact.valid, `${tx.txid} did not resolve against its Rating Right`).toBe(true);
-      expect(fact.score).toBeGreaterThanOrEqual(1);
-      expect(fact.score).toBeLessThanOrEqual(5);
+      // These spend plain P2PKH rights, and the receipt that would have put them
+      // in the index is not a fact under 0.3.0 (the test above). A rating is only
+      // a fact against a tracked Rating Right, so nothing resolves and there is no
+      // fact to report — not an invalid one.
+      replayHistoryTo(tx.txid);
+      expect(
+        indexRawTransaction(tx.hex, store, { binding: false }),
+        `${tx.txid}: untracked Rating Right`,
+      ).toBeNull();
+      expect(indexRawTransaction(tx.hex, store, { binding: true })).toBeNull();
     }
+
+    // The positive control for a rating that *is* a fact — a spend with an
+    // OP_RETURN and no covenant behind it, which must not be required to bind —
+    // now has to be built against a 0.3.0 receipt, and lives in
+    // binding_recognition.test.ts. It cannot be produced from these vectors,
+    // because nothing here is a 0.3.0 receipt.
   });
 
-  it('reproduces the scores the protocol fixture recorded', () => {
-    // The protocol repository holds the facts its reference implementation
-    // concluded. Re-deriving them here is the point of keeping the raw bytes:
-    // the two implementations can be compared without trusting either.
-    const scores = ratings().map((tx) => replayThrough(tx.txid, 'RATING_ISSUED').score);
-    // From real-chain-facts.json: 2 and 3.
-    expect(scores.sort()).toEqual([2, 3]);
+  it('keeps the historical scores as a record, without re-deriving them', () => {
+    // From real-chain-facts.json: 2 and 3. They are kept as a record of what a
+    // real Chipnet run concluded under 0.2.x, not as something this version
+    // reproduces: the Rating Rights those ratings spent are not facts here, so
+    // there is nothing left to re-derive from. SPEC-009 RF-W57.
+    expect(ratings()).toHaveLength(2);
+    expect(chain.provenance.network).toBe('chipnet');
   });
 
   it('leaves the identity NFT committed to the owner the vault covenant holds', () => {

@@ -33,8 +33,8 @@ describe('protocol inputs', () => {
     expect(PROTOCOL_SPECIFICATION.length).toBeGreaterThan(0);
   });
 
-  it('exposes the seven fact types the protocol declares', () => {
-    expect(FACT_TYPES).toHaveLength(7);
+  it('exposes the eight fact types the protocol declares', () => {
+    expect(FACT_TYPES).toHaveLength(8);
     expect(constantsJson.factTypes.map((f: { type: string }) => f.type)).toEqual([...FACT_TYPES]);
     for (const type of FACT_TYPES) expect(isFactType(type)).toBe(true);
     expect(isFactType('NOT_A_FACT')).toBe(false);

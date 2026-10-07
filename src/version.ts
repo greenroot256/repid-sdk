@@ -28,21 +28,29 @@ export const SDK_VERSION = '0.1.0';
 /**
  * The protocol versions this build implements, as stated by SPEC-010 §5.
  *
- * Only `0.2.0`, and the replacement of `0.1.0` is deliberate rather than an
- * oversight. SPEC-010 §4.1 records that during `0.y.z` a breaking change advances
- * `MINOR`, so `0.1.0` and `0.2.0` are *not* two readings of the same rules: from
- * `0.2.0` a receipt genesis naming one party as both of them is not recognized
- * (RF-W55), and it was recognized before. Keeping `0.1.0` in this list would
- * claim this recognizer can also read under the older rules, and it cannot — the
- * same bytes must produce different facts under the two versions, and only one
- * of them is what this code does.
+ * Since task E the declared set is `0.3.0` and `0.4.0`, and this is the case
+ * SPEC-010 §4.1 calls a *superset, not a replacement*. `0.4.0` changes no rule
+ * that reads a `0.3.0` byte: it adds the identity-vault burn-delay body, the
+ * `REPID_RATING2` comment hash, the `REPID_RETRACT1` retraction and the optional
+ * interaction context in the Receipt's NFT commitment. The same bytes that
+ * produced a fact under `0.3.0` produce the same fact under `0.4.0`, so one
+ * recognizer reads both eras identically and can honestly claim both versions.
  *
- * At a `MAJOR` boundary the arithmetic runs the other way: the historical fact
- * still has to be readable (SPEC-010 §7), so the earlier version is added
- * alongside the new one rather than replacing it, until no supported consumer
- * needs the old rules. That is not this bump.
+ * That is why the versions here stop at a deliberate boundary. `0.1.0` and
+ * `0.2.0` are *not* addable the same way: at `0.2.0` a receipt genesis whose
+ * Rating Rights were in P2PKH was recognized, and since `0.3.0` it is not
+ * (SPEC-009 RF-W58). The same bytes must produce different facts under those
+ * versions, and only one of them is what this code does; claiming them would be
+ * claiming a reading this recognizer does not perform.
+ *
+ * The set is also load-bearing for covenant binding. The identity vault is the
+ * one covenant with two coexisting bodies (the pre-`0.4.0` one, no burn delay,
+ * and the `0.4.0` one with `require(this.age >= 144)`), and SPEC-009 RF-W56/
+ * RF-W76 requires an implementation to bind against the bodies of its *declared*
+ * versions and never by trial matching — see `src/recognize.ts`, which derives
+ * the accepted bodies from this list.
  */
-export const SUPPORTED_PROTOCOL_VERSIONS: readonly string[] = ['0.2.0'];
+export const SUPPORTED_PROTOCOL_VERSIONS: readonly string[] = ['0.3.0', '0.4.0'];
 
 /**
  * Fails loudly when a protocol version is not one this build implements.

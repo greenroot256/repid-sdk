@@ -25,8 +25,10 @@ import {
   mockUtxo,
   ratingOpReturnOutput,
   expectFact,
-      unlocker,
+  unlocker,
   type Party,
+  receiptGenesisArgs,
+  receiptRights,
 } from './helpers.js';
 
 const provider: MockNetworkProvider = makeProvider();
@@ -42,7 +44,8 @@ async function genesisReceipt() {
   const partyB = makeParty(seedCounter + 2);
   seedCounter += 2;
 
-  const contract = new Contract(receiptArtifact, [partyA.pkh, partyB.pkh], { provider });
+  const contract = new Contract(receiptArtifact, receiptGenesisArgs(partyA, partyB), { provider });
+  const { vaultForA, vaultForB } = receiptRights(provider, partyA, partyB);
   const utxo = mockUtxo('aa'.repeat(32), 10_000n);
   provider.addUtxo(contract.address, utxo);
   const category = utxo.txid;
@@ -63,12 +66,12 @@ async function genesisReceipt() {
       token: { category, amount: 0n, nft: { capability: 'none', commitment: '' } },
     })
     .addOutput({
-      to: partyA.address,
+      to: vaultForA.tokenAddress,
       amount: 1000n,
       token: { category, amount: 0n, nft: { capability: 'none', commitment: partyB.pkhHex } },
     })
     .addOutput({
-      to: partyB.address,
+      to: vaultForB.tokenAddress,
       amount: 1000n,
       token: { category, amount: 0n, nft: { capability: 'none', commitment: partyA.pkhHex } },
     })

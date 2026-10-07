@@ -24,6 +24,7 @@ import { findFinalPush } from '../src/covenant.js';
 import vaultArtifact from './fixtures/identity_vault.json' with { type: 'json' };
 import identityArtifact from './fixtures/identity_genesis.json' with { type: 'json' };
 import receiptArtifact from './fixtures/receipt_genesis.json' with { type: 'json' };
+import ratingRightArtifact from './fixtures/rating_right.json' with { type: 'json' };
 import bytecode from '../src/protocol/covenant-bytecode.json' with { type: 'json' };
 import {
   makeParty,
@@ -31,6 +32,8 @@ import {
   mockUtxo,
   ratingOpReturnOutput,
   trustOpReturnOutput,
+  ratingRightHashes,
+  receiptRights,
   unlocker,
   type Party,
 } from './helpers.js';
@@ -59,7 +62,7 @@ function fresh() {
 const txidOf = (hex: string) =>
   binToHex(new Uint8Array(hash256(new Uint8Array(Buffer.from(hex, 'hex')))).reverse());
 
-const EMPTY = { ratingRights: [], receipts: [], identities: [] };
+const EMPTY = { ratingRights: [], receipts: [], identities: [], ratings: [], retractions: [] };
 
 // --- transaction builders --------------------------------------------------
 
@@ -111,7 +114,17 @@ async function mintLegacy(owner: Party) {
 }
 
 async function mintReceipt(partyA: Party, partyB: Party) {
-  const contract = new Contract(receiptArtifact, [partyA.pkh, partyB.pkh], { provider });
+  // SPEC-008 RF-O825: the genesis locks each Rating Right to the P2SH20 hash of
+  // RatingRightVault for that party, passed in as constructor arguments because
+  // CashScript 0.13 cannot reference the covenant by name.
+  const { hashA, hashB } = ratingRightHashes(partyA, partyB);
+
+  const contract = new Contract(
+    receiptArtifact,
+    [partyA.pkh, partyB.pkh, hexToBytes(hashA), hexToBytes(hashB)],
+    { provider },
+  );
+  const { vaultForA, vaultForB } = receiptRights(provider, partyA, partyB);
   const utxo = mockUtxo(category(), 10_000n);
   provider.addUtxo(contract.address, utxo);
   const nft = (commitment: string) => ({
@@ -131,8 +144,9 @@ async function mintReceipt(partyA: Party, partyB: Party) {
       ),
     )
     .addOutput({ to: partyA.address, amount: 1000n, token: nft('') })
-    .addOutput({ to: partyA.address, amount: 1000n, token: nft(binToHex(partyB.pkh)) })
-    .addOutput({ to: partyB.address, amount: 1000n, token: nft(binToHex(partyA.pkh)) })
+    // The two Rating Rights now go to the covenant, not to a P2PKH.
+    .addOutput({ to: vaultForA.tokenAddress, amount: 1000n, token: nft(binToHex(partyB.pkh)) })
+    .addOutput({ to: vaultForB.tokenAddress, amount: 1000n, token: nft(binToHex(partyA.pkh)) })
     .addBchChangeOutputIfNeeded({ to: partyA.address, feeRate: 1 })
     .send();
 
@@ -149,8 +163,12 @@ async function covenantUtxo(contract: Contract, cat: string): Promise<Utxo> {
   return found;
 }
 
-async function tokenUtxo(holder: Party, cat: string): Promise<Utxo> {
-  const all = await provider.getUtxos(holder.address);
+async function tokenUtxo(holder: Party, cat: string, address?: string): Promise<Utxo> {
+  // Since 0.3.0 a Rating Right lives under RatingRightVault, so the default
+  // address to look in is the vault's, not the holder's P2PKH. Pass `address` to
+  // override for a right in an older shape.
+  const where = address ?? (await receiptRights(provider, holder, holder)).vaultForA.tokenAddress;
+  const all = await provider.getUtxos(where);
   const found = all.find((u) => {
     if (!u.token) return false;
     return (typeof u.token.category === 'string' ? u.token.category : binToHex(u.token.category)) === cat;
@@ -185,10 +203,17 @@ async function topUp(owner: Party, contract: Contract, cat: string, newCollatera
 }
 
 async function rate(rater: Party, cat: string, score: number) {
-  const right = await tokenUtxo(rater, cat);
+  // The right is spent through RatingRightVault, which is the point of the
+  // covenant: the signature goes to the contract, not to a P2PKH, so the chain
+  // itself refuses to let the NFT come back (SPEC-008 RF-O12/RF-S01).
+  const vault = new Contract(ratingRightArtifact, [rater.pkh], { provider });
+  const right = await tokenUtxo(rater, cat, vault.tokenAddress);
   return (
     await new TransactionBuilder({ provider })
-      .addInput(right, new SignatureTemplate(rater.privateKey).unlockP2PKH())
+      .addInput(
+        right,
+        unlocker(vault, 'rate').rate!(rater.publicKey, new SignatureTemplate(rater.privateKey)),
+      )
       // No token output at all: the Rating Right is an NFT, and leaving it
       // unmentioned is what burns it. That is the whole single-use mechanism.
       .addOutput(ratingOpReturnOutput(score))

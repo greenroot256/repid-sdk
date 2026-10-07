@@ -21,8 +21,10 @@ import {
   mockUtxo,
   ratingOpReturnOutput,
   expectFact,
-      unlocker,
+  unlocker,
   type Party,
+  receiptGenesisArgs,
+  receiptRights,
 } from './helpers.js';
 
 // --- ISSUED_RATING and indexer (SPEC-004, SPEC-001, SPEC-003) -------------
@@ -49,7 +51,8 @@ async function genesisReceipt(): Promise<{
   const partyB = makeParty(seedCounter + 2);
   seedCounter += 2;
 
-  const contract = new Contract(receiptArtifact, [partyA.pkh, partyB.pkh], { provider });
+  const contract = new Contract(receiptArtifact, receiptGenesisArgs(partyA, partyB), { provider });
+  const { vaultForA, vaultForB } = receiptRights(provider, partyA, partyB);
   const utxo = mockUtxo('aa'.repeat(32), 10_000n);
   provider.addUtxo(contract.address, utxo);
   const category = utxo.txid;
@@ -70,7 +73,7 @@ async function genesisReceipt(): Promise<{
       token: { category, amount: 0n, nft: { capability: 'none', commitment: '' } },
     })
     .addOutput({
-      to: partyA.address,
+      to: vaultForA.tokenAddress,
       amount: 1000n,
       token: {
         category,
@@ -79,7 +82,7 @@ async function genesisReceipt(): Promise<{
       },
     })
     .addOutput({
-      to: partyB.address,
+      to: vaultForB.tokenAddress,
       amount: 1000n,
       token: {
         category,
@@ -208,7 +211,8 @@ describe('Indexer: identity, receipt and rating recognition', () => {
     const partyA = makeParty(seedCounter + 1);
     const partyB = makeParty(seedCounter + 2);
     seedCounter += 2;
-    const contract = new Contract(receiptArtifact, [partyA.pkh, partyB.pkh], { provider });
+    const contract = new Contract(receiptArtifact, receiptGenesisArgs(partyA, partyB), { provider });
+  const { vaultForA, vaultForB } = receiptRights(provider, partyA, partyB);
     const utxo = mockUtxo('aa'.repeat(32), 10_000n);
     provider.addUtxo(contract.address, utxo);
     const category = utxo.txid;
@@ -229,22 +233,22 @@ describe('Indexer: identity, receipt and rating recognition', () => {
         token: { category, amount: 0n, nft: { capability: 'none', commitment: '' } },
       })
       .addOutput({
-        to: partyA.address,
+        to: vaultForA.tokenAddress,
         amount: 1000n,
         token: {
-          category,
-          amount: 0n,
-          nft: { capability: 'none', commitment: binToHex(partyB.pkh) },
-        },
+        category,
+        amount: 0n,
+        nft: { capability: 'none', commitment: binToHex(partyB.pkh) },
+      },
       })
       .addOutput({
-        to: partyB.address,
+        to: vaultForB.tokenAddress,
         amount: 1000n,
         token: {
-          category,
-          amount: 0n,
-          nft: { capability: 'none', commitment: binToHex(partyA.pkh) },
-        },
+        category,
+        amount: 0n,
+        nft: { capability: 'none', commitment: binToHex(partyA.pkh) },
+      },
       })
       .addOutput({ to: partyA.address, amount: 6000n })
       .send();

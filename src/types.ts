@@ -1,4 +1,4 @@
-// The seven RepID fact types, and the state a recognizer must retain to derive
+// The eight RepID fact types, and the state a recognizer must retain to derive
 // them deterministically.
 //
 // Field sets here are closed on purpose. The JSON Schema in
@@ -70,6 +70,19 @@ export interface RatingRightRecord {
   ratesPkh: Pkh;
 }
 
+/**
+ * SPEC-003 RF-08. The optional interaction context decoded from the Receipt's
+ * NFT commitment (SPEC-009 §9.2). `interactionCategory`, `roleA` and `roleB` are
+ * single bytes preserved raw (tolerant reading), and `contextHash` is present
+ * only in the 36-byte `0x11` form.
+ */
+export interface ReceiptContext {
+  interactionCategory: string;
+  roleA: string;
+  roleB: string;
+  contextHash?: string;
+}
+
 /** SPEC-003. Requires both parties' signatures, by construction of the shape. */
 export interface ReceiptGenesisFact {
   type: 'RECEIPT_GENESIS';
@@ -77,12 +90,16 @@ export interface ReceiptGenesisFact {
   receiptCategory: Category;
   receiptOwnerPkh: Pkh;
   ratingRights: [RatingRightRecord, RatingRightRecord];
+  /** Present only when the NFT commitment carried an interaction context. */
+  receiptContext?: ReceiptContext;
 }
 
 /**
  * SPEC-004. The Rating Right is burned by being spent, which is what enforces
  * one rating per participant at the UTXO level. `score` is reported as decoded
- * even when out of range; `valid` says whether it was inside 1-5.
+ * even when out of range; `valid` says whether it was inside 1-5. A spend with
+ * `REPID_RATING2` additionally carries the 32-byte `commentHash`; with
+ * `REPID_RATING1` the field is absent.
  */
 export interface RatingIssuedFact {
   type: 'RATING_ISSUED';
@@ -91,6 +108,22 @@ export interface RatingIssuedFact {
   raterPkh: Pkh;
   rateePkh: Pkh;
   score: number;
+  commentHash?: string;
+  valid: boolean;
+}
+
+/**
+ * SPEC-004 RF-06/RF-07. A rater unilaterally retracts a rating it issued, by
+ * spending its own P2PKH UTXO with `REPID_RETRACT1` naming the rating's Receipt
+ * (SPEC-009 §4.5). The original `RATING_ISSUED` is never deleted; `valid: false`
+ * marks an unknown reference, a spender who was not the rater, or a repeated
+ * retraction of the same rating.
+ */
+export interface RatingRetractionFact {
+  type: 'RATING_RETRACTION';
+  txid: Txid;
+  raterPkh: Pkh;
+  receiptTxid: Txid;
   valid: boolean;
 }
 
@@ -123,6 +156,7 @@ export type RepidFact =
   | ReceiptGenesisFact
   | RatingIssuedFact
   | PlatformConfirmationFact
+  | RatingRetractionFact
   | TrustLinkFact;
 
 export type FactType = RepidFact['type'];
@@ -144,15 +178,46 @@ export interface IdentityRecord {
   ownerPkh: Pkh;
   identityCategory: Category;
   collateral: AmountString;
+  /**
+   * The protocol version whose vault body minted this identity, recorded at
+   * genesis when binding is on (SPEC-009 RF-W76). The identity carries it
+   * forward across top-ups, so every later spend is verified against that one
+   * body instead of any other.
+   */
+  vaultVersion?: string;
 }
 
-/** What is retained about a Receipt, so confirmations can be corroborated. */
+/**
+ * What is retained about a Receipt, so confirmations can be corroborated.
+ *
+ * Both parties are kept because a valid `PLATFORM_CONFIRMATION` cannot come from
+ * either party of the Receipt it names (SPEC-003 RF-10, SPEC-009 RF-W71), and
+ * the interaction context is kept because later reads of it depend on the
+ * Receipt index (SPEC-005 RF-23).
+ */
 export interface ReceiptRecord {
+  /** partyA: the P2PKH holder of output 0. */
   receiptOwnerPkh: Pkh;
+  /** partyB: the counterparty, from the Rating Rights' cross pair. */
+  partyBPkh: Pkh;
+  receiptContext?: ReceiptContext;
 }
 
 /** What a Rating Right entitles its holder to do, without naming it. */
 export type RatingRightInfo = Omit<RatingRightRecord, 'outpoint'>;
+
+/**
+ * One entry of the ratings index and of the retracted set (SPEC-005 RF-27).
+ *
+ * The index answers "did this rater really rate against this Receipt", which is
+ * what turns a `REPID_RETRACT1` reference into a corroborable claim. The set of
+ * retractions is keyed the same way, so two parties rating the same Receipt
+ * retract independently of each other.
+ */
+export interface RatingRecord {
+  raterPkh: Pkh;
+  receiptTxid: Txid;
+}
 
 /**
  * The state SPEC-005 requires a recognizer to retain.
@@ -181,6 +246,23 @@ export interface RepidStateStore {
   getReceipt(txid: Txid): ReceiptRecord | undefined;
   trackReceipt(txid: Txid, record: ReceiptRecord): void;
 
+  /**
+   * The ratings index, SPEC-005 RF-27. `RATING_ISSUED` recognition records
+   * `(raterPkh, receiptTxid)` so a later `REPID_RETRACT1` can be corroborated
+   * against a rating that actually exists and was signed by the spender.
+   */
+  hasRating(raterPkh: Pkh, receiptTxid: Txid): boolean;
+  recordRating(raterPkh: Pkh, receiptTxid: Txid): void;
+
+  /**
+   * The retracted set. A `REPID_RETRACT1` that references an already-retracted
+   * rating is emitted with `valid: false`; only a *valid first* retraction is
+   * recorded, so a malformed or premature retraction cannot burn a later,
+   * legitimate one (SPEC-004 RF-07).
+   */
+  isRatingRetracted(raterPkh: Pkh, receiptTxid: Txid): boolean;
+  recordRatingRetraction(raterPkh: Pkh, receiptTxid: Txid): void;
+
   getIdentity(outpoint: Outpoint): IdentityRecord | undefined;
   /**
    * The identity held by `ownerPkh`, if any.
@@ -206,4 +288,6 @@ export interface RepidStateSnapshot {
   ratingRights: Array<[Outpoint, RatingRightRecord]>;
   receipts: Array<[Txid, ReceiptRecord]>;
   identities: Array<[Outpoint, IdentityRecord]>;
+  ratings: Array<[string, RatingRecord]>;
+  retractions: Array<[string, RatingRecord]>;
 }

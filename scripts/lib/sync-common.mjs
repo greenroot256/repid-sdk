@@ -78,8 +78,17 @@ export const SYNCED_FILES = [
     source: 'artifacts/receipt_genesis.json',
     dest: 'test/fixtures/receipt_genesis.json',
     scope: 'test',
-    label: 'receipt genesis artifact',
-  },
+label: 'receipt genesis artifact',
+    },
+    {
+      // RatingRightVault. The receipt genesis cannot name this covenant, so the
+      // tests have to instantiate it themselves to produce a transaction that
+      // locks a Rating Right under it (SPEC-008 RF-O822).
+      source: 'artifacts/rating_right.json',
+      dest: 'test/fixtures/rating_right.json',
+      scope: 'test',
+      label: 'rating right artifact',
+    },
   {
     // The canonical covenant bytecode, in hex. The artifacts above cannot serve
     // this purpose: their `bytecode` field holds disassembled mnemonics, which

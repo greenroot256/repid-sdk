@@ -18,7 +18,7 @@
 // conformance still rests on real-VM runs, which is why no test here claims it.
 
 import { expect } from 'vitest';
-import { MockNetworkProvider, type Utxo } from 'cashscript';
+import { Contract, MockNetworkProvider, type Utxo } from 'cashscript';
 import {
   generatePrivateKey,
   secp256k1,
@@ -29,6 +29,9 @@ import {
 } from '@bitauth/libauth';
 import { OP_RETURN_TAGS } from '../src/constants.js';
 import { hexToBytes } from '../src/bytes.js';
+import { buildP2SH32Hash, type CanonicalCovenant } from '../src/covenant.js';
+import covenantBytecode from '../src/protocol/covenant-bytecode.json' with { type: 'json' };
+import ratingRightArtifact from './fixtures/rating_right.json' with { type: 'json' };
 import type { FactType, RepidFact } from '../src/types.js';
 
 export interface Party {
@@ -174,4 +177,65 @@ export function expectFact<T extends FactType>(
   expect(fact, `expected a ${type} fact but the transaction was not recognized`).not.toBeNull();
   expect(fact?.type, `expected a ${type} fact`).toBe(type);
   return fact as Extract<RepidFact, { type: T }>;
+}
+
+/**
+ * The P2SH32 hashes a ReceiptGenesisValidator takes to lock both Rating Rights
+ * under the canonical RatingRightVault (SPEC-008 RF-O825, SPEC-009 RF-W58).
+ *
+ * CashScript 0.13 cannot reference a contract by name, so the commitment travels
+ * through the genesis constructor instead. Every test that mints a receipt has
+ * to compute these, and a test that computed them wrongly would fail with an
+ * unhelpful builder error rather than pointing at the cause, so it lives here
+ * once.
+ */
+export function ratingRightHashes(partyA: Party, partyB: Party): { hashA: string; hashB: string } {
+  const ratingRight = covenantBytecode.contracts.ratingRight as CanonicalCovenant;
+  return {
+    hashA: buildP2SH32Hash(ratingRight, [partyA.pkhHex]),
+    hashB: buildP2SH32Hash(ratingRight, [partyB.pkhHex]),
+  };
+}
+
+/**
+ * The two covenant instances a receipt genesis locks its Rating Rights under.
+ *
+ * Since 0.3.0 a Rating Right is a `RatingRightVault` UTXO (SPEC-008 RF-O822), so
+ * the genesis needs the vault instantiated separately for each party: sending the
+ * rights to the genesis contract's own address would produce a P2SH32 whose hash
+ * is not the one the genesis committed to, and the covenant would refuse the
+ * transaction with a `require` failure that says nothing about the cause.
+ */
+export function receiptRights(
+  provider: MockNetworkProvider,
+  partyA: Party,
+  partyB: Party,
+): { vaultForA: Contract; vaultForB: Contract } {
+  return {
+    vaultForA: new Contract(ratingRightArtifact, [partyA.pkh], { provider }),
+    vaultForB: new Contract(ratingRightArtifact, [partyB.pkh], { provider }),
+  };
+}
+
+/**
+ * The four constructor arguments of a ReceiptGenesisValidator for this pair.
+ *
+ * The last two are the P2SH32 hashes of `RatingRightVault`, which the genesis
+ * cannot compute itself (SPEC-008 RF-O825).
+ */
+export function receiptGenesisArgs(
+  partyA: Party,
+  partyB: Party,
+): [Uint8Array, Uint8Array, Uint8Array, Uint8Array] {
+  const { hashA, hashB } = ratingRightHashes(partyA, partyB);
+  return [partyA.pkh, partyB.pkh, hexToBytes(hashA), hexToBytes(hashB)];
+}
+
+/** The same arguments as `receiptGenesisArgs`, as hex, for binding checks. */
+export function receiptGenesisArgsHex(
+  partyA: Party,
+  partyB: Party,
+): [string, string, string, string] {
+  const { hashA, hashB } = ratingRightHashes(partyA, partyB);
+  return [partyA.pkhHex, partyB.pkhHex, hashA, hashB];
 }

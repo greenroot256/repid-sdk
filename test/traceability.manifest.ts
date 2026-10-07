@@ -39,6 +39,7 @@ const TRUST = 'trust_link.test.ts';
 const BINDING = 'covenant_binding.test.ts';
 const REAL = 'real_chain_binding.test.ts';
 const SEAM = 'binding_recognition.test.ts';
+const B3 = 'b3_0_4_0_vectors.test.ts';
 
 export const COVERED: Readonly<Record<string, Covered>> = {
   // --- SPEC-008 section 4.1, token structure --------------------------------
@@ -363,7 +364,7 @@ export const COVERED: Readonly<Record<string, Covered>> = {
       `${SEAM} :: rejects a vault genesis revealing a foreign script, leaving no trace`,
       `${SEAM} :: rejects a receipt genesis that reveals the body without its arguments`,
       `${SEAM} :: rejects a top-up revealing a foreign script without moving the tracking`,
-      `${REAL} :: records that the receipt genesis on chain predates the distinct-parties rule`,
+      `${REAL} :: no longer recognizes the receipt genesis on chain, whose rights were in P2PKH`,
     ],
     note:
       'the first tests are the impostors the base recognizer accepts today, which ' +
@@ -378,7 +379,7 @@ export const COVERED: Readonly<Record<string, Covered>> = {
   },
   'SPEC-009/RF-W50': {
     tests: [
-      `${REAL} :: recognizes both ratings, which have no covenant to bind to`,
+      `${REAL} :: does not recognize the historical ratings, whose Rating Right was never tracked`,
       `${SEAM} :: recognizes ratings, which have no covenant, without rejecting them`,
       `${SEAM} :: gives identical results with and without binding for trust links`,
     ],
@@ -458,7 +459,7 @@ export const COVERED: Readonly<Record<string, Covered>> = {
   },
   'SPEC-009/RF-W56': {
     tests: [
-      `${REAL} :: records that the receipt genesis on chain predates the distinct-parties rule`,
+      `${REAL} :: no longer recognizes the receipt genesis on chain, whose rights were in P2PKH`,
     ],
     note:
       'the prohibition is asserted by what the implementation does not do. The ' +
@@ -470,13 +471,130 @@ export const COVERED: Readonly<Record<string, Covered>> = {
   },
   'SPEC-009/RF-W57': {
     tests: [
-      `${REAL} :: records that the receipt genesis on chain predates the distinct-parties rule`,
+      `${REAL} :: no longer recognizes the receipt genesis on chain, whose rights were in P2PKH`,
     ],
     note:
       'both halves of the requirement, on one real transaction. No fact at all ' +
       'with binding applied, rather than a fact marked invalid, and the same ' +
       'transaction still recognized without binding, which is what distinguishes ' +
       '"unverified" from "forged" (SPEC-009 section 12.3).',
+  },
+
+  // --- SPEC-009 section 4/8/9/12, the 0.4.0 recognition vectors -------------
+  // Annex B.3 vectors 1-14, executed as raw-byte transactions in one file so
+  // each row of the table is a test the Annex can be read against.
+  'SPEC-009/RF-W64': {
+    tests: [
+      `${B3} :: issues a RATING_ISSUED with score and commentHash from a well-formed REPID_RATING2`,
+    ],
+    note:
+      'the three-chunk form is decoded into score and commentHash, the rater and ' +
+      'ratee are resolved from the spent Rating Right, and the fact carries both ' +
+      'the score and the hash.',
+  },
+  'SPEC-009/RF-W65': {
+    tests: [
+      `${B3} :: emits no fact for a REPID_RATING2 with only the score`,
+      `${B3} :: emits no fact for a REPID_RATING2 shaped like the two-chunk REPID_RATING1`,
+    ],
+    note:
+      'both wrong-shape cases under the RATING2 tag yield nothing, never a ' +
+      'reading of the empty slot: one byte alone is the wrong chunk count, and a ' +
+      'two-byte payload is the wrong chunk sizes.',
+  },
+  'SPEC-009/RF-W66': {
+    tests: [
+      `${B3} :: a valid retraction of a rating its signer issued`,
+    ],
+    note:
+      'a well-formed RETRACT1 is emitted as a RATING_RETRACTION with the spender ' +
+      'and the referenced Receipt, and the reference is kept for later repeats.',
+  },
+  'SPEC-009/RF-W67': {
+    tests: [
+      `${B3} :: a retraction whose payload is 20 bytes, not 32`,
+    ],
+    note: 'a non-32-byte reference or wrong chunk count is a malformed container, so no fact.',
+  },
+  'SPEC-009/RF-W68': {
+    tests: [
+      `${B3} :: a retraction of a rating this recognizer never saw`,
+    ],
+    note: 'an unknown reference is a claim, not a retraction: the fact is emitted, marked invalid.',
+  },
+  'SPEC-009/RF-W69': {
+    tests: [
+      `${B3} :: a retraction spent by a wallet that is not the rating signer`,
+    ],
+    note:
+      'the spender derives from the P2PKH scriptSig per SPEC-009 section 5; a ' +
+      'spender who never signed the referenced rating is marked invalid.',
+  },
+  'SPEC-009/RF-W70': {
+    tests: [
+      `${B3} :: a second retraction of an already-retracted rating`,
+    ],
+    note:
+      'the first retraction enters the retracted set, the second is recognized ' +
+      'and marked invalid, and the original RATING_ISSUED is untouched in the ' +
+      'ratings index.',
+  },
+  'SPEC-009/RF-W71': {
+    tests: [
+      `${B3} :: a party of the Receipt cannot corroborate its own interaction`,
+      `${B3} :: a third party who is neither party still corroborates`,
+    ],
+    note:
+      'both halves in one store: a party of the Receipt is marked invalid, and ' +
+      'the same receipt is confirmed by a third entity, which keeps the rule from ' +
+      'being implemented as a blanket refusal.',
+  },
+  'SPEC-009/RF-W72': {
+    tests: [
+      `${B3} :: a valid retraction of a rating its signer issued`,
+      `${B3} :: a second retraction of an already-retracted rating`,
+    ],
+    note:
+      'the retracted set retains the reference (RF-27) so a repeat is invalid; ' +
+      'the negative case in RF-W70 shows the retention survives an invalid ' +
+      'attempt, so only valid retractions record. The consume of the Rating ' +
+      'Right is exercised by the rating recognizer that precedes the retraction.',
+  },
+  'SPEC-009/RF-W73': {
+    tests: [
+      `${B3} :: decodes a 4-byte 0x10 context, keeping unknown values raw`,
+      `${B3} :: decodes a 36-byte 0x11 context with its contextHash`,
+      `${B3} :: rejects every foreign commitment shape`,
+    ],
+    note:
+      'the two fixed forms are decoded into the receiptContext fields, unknown ' +
+      'category and role bytes stay raw, and every length or format byte outside ' +
+      'the two forms — including reserved flags and the wrong length for a form — ' +
+      'is read as no fact, not as a variant.',
+  },
+  'SPEC-009/RF-W74': {
+    tests: [
+      `${B3} :: decodes a 4-byte 0x10 context, keeping unknown values raw`,
+      `${B3} :: decodes a 36-byte 0x11 context with its contextHash`,
+    ],
+    note:
+      'both context tests assert the context is retained, not only decoded: ' +
+      'store.getReceipt(receipt.txid).receiptContext equals the fact field, which ' +
+      'is what a later self-corroboration or context read depends on.',
+  },
+  'SPEC-009/RF-W76': {
+    tests: [
+      `${B3} :: rejects a spend revealing the 0.4.0 body for an identity recorded under 0.3.0`,
+      `${B3} :: the same spend is a burn when the identity records 0.4.0`,
+      `${B3} :: an identity recorded without a version cannot be spent under binding at all`,
+      `${B3} :: with binding off, the same spend is still reported: shape recognition claims nothing about covenants`,
+    ],
+    note:
+      'the applied version is the one recorded at genesis, never an on-the-fly ' +
+      'match: a 0.4.0 reveal under a 0.3.0 record is rejected with no trace, the ' +
+      'same bytes are a burn under a 0.4.0 record, an unrecorded version cannot ' +
+      'name the body and rejects, and shape recognition without binding makes no ' +
+      'covenant claim at all.',
   },
 };
 
@@ -548,7 +666,7 @@ export const SPEC_DEFAULT_REASON: Readonly<Record<string, string>> = {
   'SPEC-008':
     'Declared normative, but not yet mapped to a specific test. This is the largest remaining traceability gap and the one worth closing first: these are the on-chain invariants and the recognition rules the protocol exists to define.',
   'SPEC-009':
-    'Recognition and wire-format requirement without a citation. Some are the vectors SPEC-009 Annex B.2 records as still open, which are not a mapping failure but a known gap in the suite.',
+    'Recognition and wire-format requirement without a citation. The 0.4.0 Annex B.3 vectors are cited above; what remains uncited are the container-parsing and reading-discipline rules restated from B.2, which RF-W38, RF-W40 and RF-W45 already pin for the wire format and this manifest records as the standing coverage-work item.',
 };
 
 /**

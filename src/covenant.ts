@@ -214,6 +214,9 @@ export function readRedeemScript(unlockingBytecode: Uint8Array | undefined): Uin
  * arguments: each argument minimally pushed, in reverse declaration order,
  * followed by the compiler bytecode.
  *
+ * `bytes20` pushes as `0x14 <20>` and `bytes32` as `0x20 <32>`, which is what the
+ * compiler emits for each.
+ *
  * Throws on an argument shape this module cannot serialize, because a silently
  * wrong expected script would make every comparison below meaningless. Callers
  * turn that into a `BindingFailure` rather than letting it escape.
@@ -232,15 +235,20 @@ export function buildExpectedScript(
   const parts: Uint8Array[] = [];
   for (let i = constructorInputs.length - 1; i >= 0; i -= 1) {
     const input = constructorInputs[i]!;
-    if (input.type !== 'bytes20') {
+    // ReceiptGenesisValidator takes bytes32 as well as bytes20: its last two
+    // arguments are P2SH32 hashes rather than pkhs (SPEC-008 RF-O825), and the
+    // width decides the minimal push. CashScript has no push operator for a bare
+    // 32 bytes other than the single-byte `0x20`, which is what a 32-byte
+    // argument compiles to.
+    const width = input.type === 'bytes32' ? 32 : input.type === 'bytes20' ? 20 : 0;
+    if (width === 0) {
       throw new Error(`unsupported constructor type ${input.type} for ${input.name}`);
     }
     const value = args[i];
-    if (!value || value.length !== 40) {
-      throw new Error(`constructor argument ${input.name} must be 20 bytes of hex`);
+    if (!value || value.length !== width * 2) {
+      throw new Error(`constructor argument ${input.name} must be ${width} bytes of hex`);
     }
-    // 0x14 is the minimal push of 20 bytes; the 20 value bytes follow it.
-    parts.push(new Uint8Array([0x14]), hexToBytes(value));
+    parts.push(new Uint8Array([width]), hexToBytes(value));
   }
   parts.push(hexToBytes(covenant.bytecodeHex));
 
@@ -348,4 +356,27 @@ export function verifyRedeemScriptBinding(
     };
   }
   return { bound: true, expectedScriptHash, revealedLength: revealed.length };
+}
+
+/**
+ * The P2SH32 hash of a covenant instantiated with `args` (SPEC-009 RF-W58).
+ *
+ * SPEC-008 RF-O825 has ReceiptGenesisValidator lock each Rating Right to the
+ * P2SH32 hash of RatingRightVault rather than to the covenant by name, because
+ * CashScript 0.13 cannot reference another contract. That commitment travels
+ * through the genesis contract's constructor arguments, so verifying a receipt
+ * genesis means rebuilding its expected script with two arguments this module
+ * does not receive: the two hashes are *derived* here from the canonical
+ * RatingRightVault bytecode and the parties already established, never taken
+ * from the transaction under verification. Taking them from the transaction
+ * would make the check agree with whatever it was handed (RF-W56).
+ *
+ * P2SH32 and not P2SH20 because that is what `new Contract(...)` produces, so
+ * this is the only form a deployed covenant address can have.
+ */
+export function buildP2SH32Hash(
+  covenant: CanonicalCovenant,
+  args: (string | undefined)[],
+): string {
+  return binToHex(hash256(buildExpectedScript(covenant, args)));
 }

@@ -44,7 +44,18 @@ import {
 import vaultArtifact from './fixtures/identity_vault.json' with { type: 'json' };
 import receiptArtifact from './fixtures/receipt_genesis.json' with { type: 'json' };
 import bytecode from '../src/protocol/covenant-bytecode.json' with { type: 'json' };
-import { makeParty, makeProvider, mockUtxo, unlocker, expectFact, type Party } from './helpers.js';
+import {
+  makeParty,
+  makeProvider,
+  mockUtxo,
+  unlocker,
+  expectFact,
+  type Party,
+  receiptGenesisArgs,
+  receiptGenesisArgsHex,
+  receiptRights,
+  ratingRightHashes,
+} from './helpers.js';
 
 const provider: MockNetworkProvider = makeProvider();
 let store = createMemoryStore();
@@ -120,7 +131,8 @@ async function mintIdentity(owner: Party, collateral = 1000n): Promise<string> {
 }
 
 async function mintReceipt(partyA: Party, partyB: Party): Promise<string> {
-  const contract = new Contract(receiptArtifact, [partyA.pkh, partyB.pkh], { provider });
+  const contract = new Contract(receiptArtifact, receiptGenesisArgs(partyA, partyB), { provider });
+  const { vaultForA, vaultForB } = receiptRights(provider, partyA, partyB);
   const utxo = mockUtxo(CATEGORY, 10_000n);
   provider.addUtxo(contract.address, utxo);
   const nft = (commitment: string) => ({
@@ -141,8 +153,8 @@ async function mintReceipt(partyA: Party, partyB: Party): Promise<string> {
         ),
       )
       .addOutput({ to: partyA.address, amount: 1000n, token: nft('') })
-      .addOutput({ to: partyA.address, amount: 1000n, token: nft(binToHex(partyB.pkh)) })
-      .addOutput({ to: partyB.address, amount: 1000n, token: nft(binToHex(partyA.pkh)) })
+      .addOutput({ to: vaultForA.tokenAddress, amount: 1000n, token: nft(binToHex(partyB.pkh)) })
+      .addOutput({ to: vaultForB.tokenAddress, amount: 1000n, token: nft(binToHex(partyA.pkh)) })
       .addBchChangeOutputIfNeeded({ to: partyA.address, feeRate: 1 })
       .send()
   ).hex;
@@ -193,14 +205,15 @@ describe('a genuine covenant spend is bound to the canonical script', () => {
 
     const result = verifyRedeemScriptBinding(
       input.unlockingBytecode,
-      [binToHex(partyA.pkh), binToHex(partyB.pkh)],
+      receiptGenesisArgsHex(partyA, partyB),
       RECEIPT,
     );
 
-    expect(result.bound).toBe(true);
-    // Two pushed pkh values plus 126 bytes of bytecode (122 before 0.2.0 added
-    // the distinct-parties check).
-    expect(result.revealedLength).toBe(168);
+expect(result.bound).toBe(true);
+    // Four pushed arguments in reverse declaration order: two bytes20 pkhs
+    // (0x14 + 20 each) and two bytes32 P2SH32 hashes (0x20 + 32 each), giving
+    // 108 bytes of arguments, plus 122 bytes of bytecode.
+    expect(result.revealedLength).toBe(230);
   });
 
   it('pushes the constructor arguments in reverse declaration order', async () => {
@@ -213,10 +226,17 @@ describe('a genuine covenant spend is bound to the canonical script', () => {
     const input = tx.inputs.find((i) => i.outpointIndex === 0)!;
     const revealed = readRedeemScript(input.unlockingBytecode)!;
 
+    const { hashA, hashB } = ratingRightHashes(partyA, partyB);
     const body = RECEIPT.bytecodeHex;
-    expect(binToHex(revealed)).toBe(`14${binToHex(partyB.pkh)}14${binToHex(partyA.pkh)}${body}`);
+    // Reverse order: ratingRightHashB, ratingRightHashA, partyBPkh, partyAPkh.
+    // The 32-byte hashes push as `0x20`, which is the only form a bytes32 takes.
+    expect(binToHex(revealed)).toBe(
+      `20${hashB}20${hashA}14${binToHex(partyB.pkh)}14${binToHex(partyA.pkh)}${body}`,
+    );
     // The declared order is a different script, and so a different hash.
-    expect(binToHex(revealed)).not.toBe(`14${binToHex(partyA.pkh)}14${binToHex(partyB.pkh)}${body}`);
+    expect(binToHex(revealed)).not.toBe(
+      `14${binToHex(partyA.pkh)}14${binToHex(partyB.pkh)}20${hashA}20${hashB}${body}`,
+    );
   });
 
   it('reads the long push form, which is what these scripts need', async () => {
@@ -292,7 +312,7 @@ describe('an impostor that matches the shape is not bound', () => {
     const { tx } = decodeRawTransaction(forged);
     const result = verifyRedeemScriptBinding(
       tx.inputs[0]!.unlockingBytecode,
-      [binToHex(partyA.pkh), binToHex(partyB.pkh)],
+      receiptGenesisArgsHex(partyA, partyB),
       RECEIPT,
     );
     expect(result.bound).toBe(false);
@@ -324,7 +344,7 @@ describe('an impostor that matches the shape is not bound', () => {
 
     const result = verifyRedeemScriptBinding(
       input.unlockingBytecode,
-      [binToHex(stranger.pkh), binToHex(partyB.pkh)],
+      receiptGenesisArgsHex(stranger, partyB),
       RECEIPT,
     );
     expect(result.bound).toBe(false);
@@ -343,7 +363,7 @@ describe('an impostor that matches the shape is not bound', () => {
 
     const result = verifyRedeemScriptBinding(
       forged,
-      [binToHex(partyA.pkh), binToHex(partyB.pkh)],
+      receiptGenesisArgsHex(partyA, partyB),
       RECEIPT,
     );
     expect(result.bound).toBe(false);

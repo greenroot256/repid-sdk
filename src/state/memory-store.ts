@@ -11,6 +11,7 @@
 import type {
   IdentityRecord,
   Outpoint,
+  RatingRecord,
   RatingRightRecord,
   ReceiptRecord,
   RepidStateSnapshot,
@@ -22,6 +23,13 @@ export function createMemoryStore(): RepidStateStore {
   const ratingRights = new Map<Outpoint, RatingRightRecord>();
   const receipts = new Map<Txid, ReceiptRecord>();
   const identities = new Map<Outpoint, IdentityRecord>();
+  const ratings = new Map<string, RatingRecord>();
+  const retractions = new Map<string, RatingRecord>();
+
+  // The retention key of the ratings index and the retracted set: one entry per
+  // rater-and-Receipt, which is how a retraction is corroborated and how two
+  // parties rating the same Receipt are kept independent.
+  const ratingKey = (raterPkh: string, receiptTxid: string) => `${raterPkh}:${receiptTxid}`;
 
   return {
     getRatingRight(outpoint) {
@@ -38,6 +46,18 @@ export function createMemoryStore(): RepidStateStore {
     },
     trackReceipt(txid, record) {
       receipts.set(txid, record);
+    },
+    hasRating(raterPkh, receiptTxid) {
+      return ratings.has(ratingKey(raterPkh, receiptTxid));
+    },
+    recordRating(raterPkh, receiptTxid) {
+      ratings.set(ratingKey(raterPkh, receiptTxid), { raterPkh, receiptTxid });
+    },
+    isRatingRetracted(raterPkh, receiptTxid) {
+      return retractions.has(ratingKey(raterPkh, receiptTxid));
+    },
+    recordRatingRetraction(raterPkh, receiptTxid) {
+      retractions.set(ratingKey(raterPkh, receiptTxid), { raterPkh, receiptTxid });
     },
     getIdentity(outpoint) {
       return identities.get(outpoint);
@@ -64,6 +84,8 @@ export function createMemoryStore(): RepidStateStore {
         ratingRights: [...ratingRights.entries()],
         receipts: [...receipts.entries()],
         identities: [...identities.entries()],
+        ratings: [...ratings.entries()],
+        retractions: [...retractions.entries()],
       };
     },
   };

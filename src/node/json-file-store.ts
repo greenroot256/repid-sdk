@@ -18,6 +18,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import type {
   IdentityRecord,
   Outpoint,
+  RatingRecord,
   RatingRightRecord,
   ReceiptRecord,
   RepidStateSnapshot,
@@ -29,6 +30,8 @@ interface PersistedState {
   ratingRights?: Record<string, RatingRightRecord>;
   receipts?: Record<string, ReceiptRecord>;
   identities?: Record<string, IdentityRecord>;
+  ratings?: Record<string, RatingRecord>;
+  retractions?: Record<string, RatingRecord>;
 }
 
 export interface JsonFileStore extends RepidStateStore {
@@ -40,6 +43,10 @@ export function createJsonFileStore(filePath: string): JsonFileStore {
   const ratingRights = new Map<Outpoint, RatingRightRecord>();
   const receipts = new Map<Txid, ReceiptRecord>();
   const identities = new Map<Outpoint, IdentityRecord>();
+  const ratings = new Map<string, RatingRecord>();
+  const retractions = new Map<string, RatingRecord>();
+
+  const ratingKey = (raterPkh: string, receiptTxid: string) => `${raterPkh}:${receiptTxid}`;
 
   function load(): void {
     let raw: string;
@@ -64,6 +71,12 @@ export function createJsonFileStore(filePath: string): JsonFileStore {
     for (const [outpoint, record] of Object.entries(data.identities ?? {})) {
       identities.set(outpoint, record);
     }
+    for (const [key, record] of Object.entries(data.ratings ?? {})) {
+      ratings.set(key, record);
+    }
+    for (const [key, record] of Object.entries(data.retractions ?? {})) {
+      retractions.set(key, record);
+    }
   }
 
   function save(): void {
@@ -71,6 +84,8 @@ export function createJsonFileStore(filePath: string): JsonFileStore {
       ratingRights: Object.fromEntries(ratingRights),
       receipts: Object.fromEntries(receipts),
       identities: Object.fromEntries(identities),
+      ratings: Object.fromEntries(ratings),
+      retractions: Object.fromEntries(retractions),
     };
     writeFileSync(filePath, `${JSON.stringify(data, null, 2)}\n`, 'utf8');
   }
@@ -94,6 +109,20 @@ export function createJsonFileStore(filePath: string): JsonFileStore {
     },
     trackReceipt(txid, record) {
       receipts.set(txid, record);
+      save();
+    },
+    hasRating(raterPkh, receiptTxid) {
+      return ratings.has(ratingKey(raterPkh, receiptTxid));
+    },
+    recordRating(raterPkh, receiptTxid) {
+      ratings.set(ratingKey(raterPkh, receiptTxid), { raterPkh, receiptTxid });
+      save();
+    },
+    isRatingRetracted(raterPkh, receiptTxid) {
+      return retractions.has(ratingKey(raterPkh, receiptTxid));
+    },
+    recordRatingRetraction(raterPkh, receiptTxid) {
+      retractions.set(ratingKey(raterPkh, receiptTxid), { raterPkh, receiptTxid });
       save();
     },
     getIdentity(outpoint) {
@@ -121,6 +150,8 @@ export function createJsonFileStore(filePath: string): JsonFileStore {
         ratingRights: [...ratingRights.entries()],
         receipts: [...receipts.entries()],
         identities: [...identities.entries()],
+        ratings: [...ratings.entries()],
+        retractions: [...retractions.entries()],
       };
     },
   };

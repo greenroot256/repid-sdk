@@ -30,6 +30,8 @@ import {
   trustOpReturnOutput,
     platformOpReturnOutput,
     unlocker,
+  receiptGenesisArgs,
+  receiptRights,
     type Party,
   } from './helpers.js';
 
@@ -45,7 +47,7 @@ const HEX32 = 'b2'.repeat(32);
 const HEX64 = 'c3'.repeat(32);
 
 describe('emitted facts satisfy the normative schema', () => {
-  it('accepts a well-formed fact of each of the seven types', () => {
+  it('accepts a well-formed fact of each of the eight types', () => {
     const representative: Record<string, unknown> = {
       IDENTITY_GENESIS: {
         type: 'IDENTITY_GENESIS',
@@ -106,11 +108,55 @@ describe('emitted facts satisfy the normative schema', () => {
         trustedPkh: HEX40,
         valid: true,
       },
+      RATING_RETRACTION: {
+        type: 'RATING_RETRACTION',
+        txid: HEX64,
+        raterPkh: HEX40,
+        receiptTxid: HEX64,
+        valid: true,
+      },
     };
 
     for (const [name, fact] of Object.entries(representative)) {
       expect(check(fact), `${name} should satisfy the schema`).toEqual([]);
     }
+  });
+
+  it('accepts the 0.4.0 optional fields: commentHash and receiptContext', () => {
+    // New in 0.4.0: REPID_RATING2 carries commentHash and the Receipt's NFT
+    // commitment can carry an interaction context. Absent from the required-only
+    // representative above, so they get their own, exercised per schema.
+    expect(
+      check({
+        type: 'RATING_ISSUED',
+        txid: HEX64,
+        spentOutpoint: `${HEX64}:1`,
+        raterPkh: HEX40,
+        rateePkh: HEX40,
+        score: 5,
+        commentHash: HEX64,
+        valid: true,
+      }),
+    ).toEqual([]);
+
+    expect(
+      check({
+        type: 'RECEIPT_GENESIS',
+        txid: HEX64,
+        receiptCategory: HEX64,
+        receiptOwnerPkh: HEX40,
+        ratingRights: [
+          { outpoint: `${HEX64}:1`, ownerPkh: HEX40, ratesPkh: HEX40 },
+          { outpoint: `${HEX64}:2`, ownerPkh: HEX40, ratesPkh: HEX40 },
+        ],
+        receiptContext: {
+          interactionCategory: '1f',
+          roleA: '02',
+          roleB: 'ab',
+          contextHash: HEX64,
+        },
+      }),
+    ).toEqual([]);
   });
 
   it('rejects a fact carrying a field the schema does not define', () => {
@@ -240,7 +286,8 @@ describe('facts emitted by indexRawTransaction satisfy the schema', () => {
     const partyB: Party = makeParty(seedCounter + 2);
     seedCounter += 2;
 
-    const contract = new Contract(receiptArtifact, [partyA.pkh, partyB.pkh], { provider });
+    const contract = new Contract(receiptArtifact, receiptGenesisArgs(partyA, partyB), { provider });
+    const { vaultForA, vaultForB } = receiptRights(provider, partyA, partyB);
     const utxo = mockUtxo('aa'.repeat(32), 10_000n);
     provider.addUtxo(contract.address, utxo);
     const category = utxo.txid;
@@ -261,12 +308,12 @@ describe('facts emitted by indexRawTransaction satisfy the schema', () => {
         token: { category, amount: 0n, nft: { capability: 'none', commitment: '' } },
       })
       .addOutput({
-        to: partyA.address,
+        to: vaultForA.tokenAddress,
         amount: 1000n,
         token: { category, amount: 0n, nft: { capability: 'none', commitment: partyB.pkhHex } },
       })
       .addOutput({
-        to: partyB.address,
+        to: vaultForB.tokenAddress,
         amount: 1000n,
         token: { category, amount: 0n, nft: { capability: 'none', commitment: partyA.pkhHex } },
       })
@@ -408,6 +455,8 @@ describe('facts emitted by indexRawTransaction satisfy the schema', () => {
     // recognizer and the protocol would silently disagree. The tags are the
     // protocol's only on-chain marker, so they are worth asserting explicitly.
     expect(OP_RETURN_TAGS.RATING).toBe('REPID_RATING1');
+    expect(OP_RETURN_TAGS.RATING2).toBe('REPID_RATING2');
+    expect(OP_RETURN_TAGS.RETRACT).toBe('REPID_RETRACT1');
     expect(OP_RETURN_TAGS.PLATFORM).toBe('REPID_PLATFORM1');
     expect(OP_RETURN_TAGS.TRUST).toBe('REPID_TRUST1');
   });

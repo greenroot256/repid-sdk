@@ -40,9 +40,18 @@ import {
   SignatureTemplate,
 } from 'cashscript';
 import { binToHex, decodeTransactionBCH, encodeTransactionBCH } from '@bitauth/libauth';
-import { indexRawTransaction, createMemoryStore, toHex } from '../src/index.js';
+import { indexRawTransaction, createMemoryStore, hexToBytes, toHex } from '../src/index.js';
 import receiptArtifact from './fixtures/receipt_genesis.json' with { type: 'json' };
-import { makeParty, makeProvider, mockUtxo, expectFact, unlocker, type Party } from './helpers.js';
+import ratingRightArtifact from './fixtures/rating_right.json' with { type: 'json' };
+import {
+  makeParty,
+  makeProvider,
+  mockUtxo,
+  expectFact,
+  ratingRightHashes,
+  unlocker,
+  type Party,
+} from './helpers.js';
 
 const provider: MockNetworkProvider = makeProvider();
 let seedCounter = 0;
@@ -68,12 +77,31 @@ function canonicalNfts(partyA: Party, partyB: Party) {
 }
 
 /** Mints a canonical Receipt through the real covenant, both parties signing. */
-async function mintCanonical(): Promise<{ hex: string; partyA: Party; partyB: Party }> {
+async function mintCanonical(): Promise<{
+  hex: string;
+  partyA: Party;
+  partyB: Party;
+  contract: Contract;
+  vaultForA: Contract;
+  vaultForB: Contract;
+}> {
   const partyA = makeParty(seedCounter + 1);
   const partyB = makeParty(seedCounter + 2);
   seedCounter += 2;
 
-  const contract = new Contract(receiptArtifact, [partyA.pkh, partyB.pkh], { provider });
+// SPEC-008 RF-O825: both Rating Rights are locked under RatingRightVault,
+  // whose P2SH20 hash for each party is a constructor argument.
+  const { hashA, hashB } = ratingRightHashes(partyA, partyB);
+  const contract = new Contract(
+    receiptArtifact,
+    [partyA.pkh, partyB.pkh, hexToBytes(hashA), hexToBytes(hashB)],
+    { provider },
+  );
+  // The rights go under the RatingRightVault, which is a *different* contract
+  // from the one running mint(): instantiating it separately here is what makes
+  // the P2SH20 hash in the output the one the genesis committed to.
+  const vaultForA = new Contract(ratingRightArtifact, [partyA.pkh], { provider });
+  const vaultForB = new Contract(ratingRightArtifact, [partyB.pkh], { provider });
   const utxo = mockUtxo(CATEGORY, 10_000n);
   provider.addUtxo(contract.address, utxo);
 
@@ -95,12 +123,12 @@ async function mintCanonical(): Promise<{ hex: string; partyA: Party; partyB: Pa
       ),
     )
     .addOutput({ to: partyA.address, amount: 1000n, token: token(nfts.receipt) })
-    .addOutput({ to: partyA.address, amount: 1000n, token: token(nfts.rightForA) })
-    .addOutput({ to: partyB.address, amount: 1000n, token: token(nfts.rightForB) })
+    .addOutput({ to: vaultForA.tokenAddress, amount: 1000n, token: token(nfts.rightForA) })
+    .addOutput({ to: vaultForB.tokenAddress, amount: 1000n, token: token(nfts.rightForB) })
     .addOutput({ to: partyA.address, amount: 6000n })
     .send();
 
-  return { hex: tx.hex, partyA, partyB };
+  return { hex: tx.hex, partyA, partyB, contract, vaultForA, vaultForB };
 }
 
 /** The subset of libauth's decoded output this file mutates. */
