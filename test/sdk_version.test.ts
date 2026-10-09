@@ -39,21 +39,29 @@ describe('implemented version declaration (SPEC-010 section 5)', () => {
   });
 
   it('rejects a version that is merely plausible', () => {
-    // The case a copied list would fail: 0.5.0 looks like the successor of the
-    // 0.4.0 this build claims, and a sync would bring it in silently. It has to
+    // The case a copied list would fail: 0.6.0 looks like the successor of the
+    // 0.5.0 this build claims, and a sync would bring it in silently. It has to
     // be refused until someone adds it deliberately.
-    expect(SUPPORTED_PROTOCOL_VERSIONS).not.toContain('0.5.0');
-    expect(() => assertSupportsProtocolVersion('0.5.0')).toThrow();
+    expect(SUPPORTED_PROTOCOL_VERSIONS).not.toContain('0.6.0');
+    expect(() => assertSupportsProtocolVersion('0.6.0')).toThrow();
   });
 
-  it('declares both 0.3.0 and 0.4.0, the superset it reads under', () => {
+  it('declares the 0.3.0/0.4.0/0.5.0 superset it reads under', () => {
     // Task E made 0.4.0 a superset of 0.3.0 rather than a replacement (SPEC-010
     // section 4.1): it adds the vault burn-delay body, REPID_RATING2, REPID_RETRACT1
     // and the receipt interaction context, and changes no rule that reads a
-    // 0.3.0 byte. One recognizer reads both eras identically, so it claims both.
+    // 0.3.0 byte. The 0.5.0 batch is the same kind of superset over 0.4.0: its
+    // only normative change is the publisher-facing commentHash preimage (now
+    // bound to the Receipt's category, SPEC-009 section 4.2) and the removal of
+    // the contextHash preimage; the recognizer reads both hashes opaquely, so
+    // every byte it recognizes under 0.4.0 is recognized the same way under
+    // 0.5.0, and the vault body is unchanged. One recognizer reads all three
+    // eras identically, so it claims all three.
     expect(SUPPORTED_PROTOCOL_VERSIONS).toContain('0.4.0');
     expect(SUPPORTED_PROTOCOL_VERSIONS).toContain('0.3.0');
+    expect(SUPPORTED_PROTOCOL_VERSIONS).toContain('0.5.0');
     expect(() => assertSupportsProtocolVersion('0.4.0')).not.toThrow();
+    expect(() => assertSupportsProtocolVersion('0.5.0')).not.toThrow();
   });
 
   it('does not claim 0.1.0 or 0.2.0, whose rules it no longer implements', () => {
@@ -73,11 +81,11 @@ describe('implemented version declaration (SPEC-010 section 5)', () => {
     // A failure a reader cannot act on is a failure that gets worked around.
     let message = '';
     try {
-      assertSupportsProtocolVersion('0.5.0');
+      assertSupportsProtocolVersion('0.6.0');
     } catch (error) {
       message = (error as Error).message;
     }
-    expect(message).toContain('0.5.0');
+    expect(message).toContain('0.6.0');
     expect(message).toContain(PROTOCOL_VERSION);
     expect(message).toContain(PROTOCOL_NAME);
     expect(message).toContain(SDK_VERSION);

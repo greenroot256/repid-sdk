@@ -15,14 +15,14 @@
     ]
   },
   "totals": {
-    "declarations": 216,
+    "declarations": 218,
     "distinctIdentifiers": 180,
-    "collidingIdentifiers": 10,
+    "collidingIdentifiers": 11,
     "bySpecification": {
       "SPEC-001": 9,
       "SPEC-002": 4,
       "SPEC-003": 10,
-      "SPEC-004": 9,
+      "SPEC-004": 11,
       "SPEC-005": 18,
       "SPEC-006": 4,
       "SPEC-008": 91,
@@ -123,7 +123,15 @@
       "id": "RF-10",
       "keys": [
         "SPEC-003/RF-10",
+        "SPEC-004/RF-10",
         "SPEC-005/RF-10"
+      ]
+    },
+    {
+      "id": "RF-11",
+      "keys": [
+        "SPEC-004/RF-11",
+        "SPEC-005/RF-11"
       ]
     }
   ],
@@ -479,6 +487,28 @@
       "kind": "Ubiquity",
       "line": 22,
       "text": "The system must never decode, store or judge the comment behind `commentHash`; verifying the correspondence between hash and comment is off-chain work for the application that knows the preimage (`REPID-CMT-V1`)."
+    },
+    {
+      "key": "SPEC-004/RF-10",
+      "id": "RF-10",
+      "spec": "SPEC-004",
+      "specFile": "SPEC-004-rating-protocol.md",
+      "section": "3. Functional Requirements (EARS Syntax)",
+      "paragraph": "",
+      "kind": "Ubiquity",
+      "line": 23,
+      "text": "When a `RATING_ISSUED` fact carries a `commentHash`, the preimage used to compute it must be the byte concatenation `REPID-CMT-V1` (12 ASCII bytes) ‖ `receiptCategory` (32 bytes, display order — the category of the Receipt the rating belongs to) ‖ `raterPkh` (20 bytes, display order) ‖ `saltLen` (1 byte, unsigned value 16–32) ‖ `salt` (`saltLen` bytes) ‖ `comment` (UTF-8, NFC-normalized), hashed once with SHA-256 (SPEC-008 RF-O826; the exact byte layout and its vectors live in SPEC-009 Annex B.4)."
+    },
+    {
+      "key": "SPEC-004/RF-11",
+      "id": "RF-11",
+      "spec": "SPEC-004",
+      "specFile": "SPEC-004-rating-protocol.md",
+      "section": "3. Functional Requirements (EARS Syntax)",
+      "paragraph": "",
+      "kind": "Ubiquity",
+      "line": 24,
+      "text": "The rater must draw the salt fresh for each rating from a cryptographically secure random source, with a length between 16 and 32 bytes; the salt is only ever revealed off-chain, together with the comment, to whoever verifies the correspondence."
     },
     {
       "key": "SPEC-005/RF-01",
@@ -1193,7 +1223,7 @@
       "paragraph": "",
       "kind": "Events",
       "line": 154,
-      "text": "When a rating is issued with `REPID_RATING2`, the system must attach the score (1–5) and a 32-byte `commentHash` computed over `REPID-CMT-V1`, the rater's `pkh`, a salt and the off-chain comment (SPEC-009 §4.2); the NFT is destroyed exactly as with `REPID_RATING1`."
+      "text": "When a rating is issued with `REPID_RATING2`, the system must attach the score (1–5) and a 32-byte `commentHash` computed over `REPID-CMT-V1`, the Receipt's `receiptCategory`, the rater's `pkh`, a salt and the off-chain comment (SPEC-009 §4.2); the NFT is destroyed exactly as with `REPID_RATING1`. The preimage is byte-exact and salted: `REPID-CMT-V1` (12 ASCII bytes) ‖ `receiptCategory` (32 bytes, display order) ‖ `raterPkh` (20 bytes) ‖ `saltLen` (1 byte, 16–32) ‖ `salt` ‖ `comment` (UTF-8, NFC), SHA-256 once (SPEC-004 RF-10/RF-11, SPEC-009 Annex B.4)."
     },
     {
       "key": "SPEC-008/RF-O827",
@@ -1852,7 +1882,7 @@
       "section": "4.3 `REPID_PLATFORM1` — platform confirmation",
       "paragraph": "",
       "kind": "Events",
-      "line": 183,
+      "line": 194,
       "text": "When a transaction's `OP_RETURN` carries exactly two chunks with tag `REPID_PLATFORM1`, the second chunk of exactly 32 bytes must be interpreted as the `receiptTxid` of the corroborated Receipt, in display order."
     },
     {
@@ -1863,7 +1893,7 @@
       "section": "4.3 `REPID_PLATFORM1` — platform confirmation",
       "paragraph": "",
       "kind": "Undesired Behavior",
-      "line": 185,
+      "line": 196,
       "text": "If the payload is not exactly 32 bytes, the recognizer must emit no fact."
     },
     {
@@ -1874,7 +1904,7 @@
       "section": "4.3 `REPID_PLATFORM1` — platform confirmation",
       "paragraph": "",
       "kind": "Events",
-      "line": 189,
+      "line": 200,
       "text": "The confirming `platformPkh` must be resolved per §5 and `valid` must be `true` only if `receiptTxid` is already present in the receipt index; otherwise the fact must be emitted with `valid: false` (SPEC-008 RF-V08)."
     },
     {
@@ -1885,7 +1915,7 @@
       "section": "4.3 `REPID_PLATFORM1` — platform confirmation",
       "paragraph": "",
       "kind": "Undesired Behavior",
-      "line": 194,
+      "line": 205,
       "text": "If the confirming `platformPkh` equals `partyA` or `partyB` of the referenced Receipt, the recognizer must emit the `PLATFORM_CONFIRMATION` with `valid: false` (self-corroboration: a party cannot corroborate its own interaction, SPEC-003 RF-10, SPEC-005 RF-26, SPEC-008 RF-O829 / RF-S06 / RF-V17)."
     },
     {
@@ -1896,7 +1926,7 @@
       "section": "4.4 `REPID_TRUST1` — trust link",
       "paragraph": "",
       "kind": "Events",
-      "line": 200,
+      "line": 211,
       "text": "When a transaction's `OP_RETURN` carries exactly two chunks with tag `REPID_TRUST1`, the second chunk of exactly 20 bytes must be interpreted as the `trustedPkh`, in display order."
     },
     {
@@ -1907,7 +1937,7 @@
       "section": "4.4 `REPID_TRUST1` — trust link",
       "paragraph": "",
       "kind": "Undesired Behavior",
-      "line": 202,
+      "line": 213,
       "text": "If the payload is not exactly 20 bytes, the recognizer must emit no fact."
     },
     {
@@ -1918,7 +1948,7 @@
       "section": "4.4 `REPID_TRUST1` — trust link",
       "paragraph": "",
       "kind": "Undesired Behavior",
-      "line": 205,
+      "line": 216,
       "text": "If `trustedPkh` equals the resolved `trusterPkh`, the fact must be emitted with `valid: false` (self-trust, SPEC-006, SPEC-008 RF-O17)."
     },
     {
@@ -1929,7 +1959,7 @@
       "section": "4.5 `REPID_RETRACT1` — rating retraction",
       "paragraph": "",
       "kind": "Events",
-      "line": 213,
+      "line": 224,
       "text": "When a transaction's `OP_RETURN` carries exactly two chunks with tag `REPID_RETRACT1`, the second chunk of exactly 32 bytes must be interpreted as the `receiptTxid` (display order) of the Receipt whose rating is being retracted, and the recognizer must proceed to resolve the declarer per §5 and to emit a `RATING_RETRACTION` fact (SPEC-008 RF-E10, RF-O827)."
     },
     {
@@ -1940,7 +1970,7 @@
       "section": "4.5 `REPID_RETRACT1` — rating retraction",
       "paragraph": "",
       "kind": "Undesired Behavior",
-      "line": 216,
+      "line": 227,
       "text": "If the `REPID_RETRACT1` payload is not exactly 32 bytes, or the chunk count is not exactly two, the recognizer must emit **no fact** (malformed container, per §4.6)."
     },
     {
@@ -1951,7 +1981,7 @@
       "section": "4.5 `REPID_RETRACT1` — rating retraction",
       "paragraph": "",
       "kind": "Undesired Behavior",
-      "line": 219,
+      "line": 230,
       "text": "If the referenced rating's Receipt is not in the ratings index, the recognizer must emit `RATING_RETRACTION` with `valid: false` (SPEC-004 RF-07, SPEC-008 RF-O828)."
     },
     {
@@ -1962,7 +1992,7 @@
       "section": "4.5 `REPID_RETRACT1` — rating retraction",
       "paragraph": "",
       "kind": "Undesired Behavior",
-      "line": 222,
+      "line": 233,
       "text": "If the `raterPkh` resolved per §5 is not the `raterPkh` of the `RATING_ISSUED` that the referenced Receipt produced, the recognizer must emit `RATING_RETRACTION` with `valid: false`."
     },
     {
@@ -1973,7 +2003,7 @@
       "section": "4.5 `REPID_RETRACT1` — rating retraction",
       "paragraph": "",
       "kind": "Undesired Behavior",
-      "line": 226,
+      "line": 237,
       "text": "If the referenced rating is already in the retracted set (RF-W72), the recognizer must emit `RATING_RETRACTION` with `valid: false`. The original `RATING_ISSUED` is never deleted; the chain records, it does not rescind."
     },
     {
@@ -1984,7 +2014,7 @@
       "section": "4.6 Malformed vs invalid",
       "paragraph": "",
       "kind": "Ubiquity",
-      "line": 234,
+      "line": 245,
       "text": "A conformant recognizer must distinguish a **malformed container** (wrong chunk count, wrong payload length, unparseable push) — which yields **no fact** — from a **semantically invalid fact** (a well-formed container that violates a range or reference rule) — which yields a fact with `valid: false`."
     },
     {
@@ -1995,7 +2025,7 @@
       "section": "5. Deriving the Declaring Party",
       "paragraph": "a fact is the signature that spent the value.",
       "kind": "Ubiquity",
-      "line": 246,
+      "line": 257,
       "text": "A conformant recognizer must derive the declaring party's `pkh` from the **first input's** unlocking bytecode (`unlockingBytecode`), by requiring a compressed public key push: the byte `0x21` at the position 34 bytes from the end, followed by exactly 33 bytes of public key at the end of the script, then `pkh = hash160(publicKey)`."
     },
     {
@@ -2006,7 +2036,7 @@
       "section": "5. Deriving the Declaring Party",
       "paragraph": "a fact is the signature that spent the value.",
       "kind": "Undesired Behavior",
-      "line": 250,
+      "line": 261,
       "text": "If the first input's unlocking bytecode is shorter than 35 bytes, or does not carry the `0x21` compressed-key marker in that position, the recognizer must emit **no fact** for a `PLATFORM1` or `TRUST1` payload, because the declarer cannot be attributed."
     },
     {
@@ -2017,7 +2047,7 @@
       "section": "5. Deriving the Declaring Party",
       "paragraph": "a fact is the signature that spent the value.",
       "kind": "Ubiquity",
-      "line": 254,
+      "line": 265,
       "text": "The derivation reads the public key from the **tail** of the unlocking bytecode, so it tolerates additional pushes before it (a signature push). A recognizer must not require the public key to be the first element of the script."
     },
     {
@@ -2028,7 +2058,7 @@
       "section": "6. Participants Not Present in the Payload",
       "paragraph": "its commitment already encodes the counterparty.",
       "kind": "Events",
-      "line": 273,
+      "line": 284,
       "text": "When a `REPID_RATING1` or `REPID_RATING2` payload is well-formed, the recognizer must resolve `raterPkh` and `rateePkh` by looking up, for each input of the transaction, whether its outpoint (`txid:vout`) is a tracked Rating Right; `raterPkh` must be that right's `ownerPkh` and `rateePkh` must be its `ratesPkh`."
     },
     {
@@ -2039,7 +2069,7 @@
       "section": "6. Participants Not Present in the Payload",
       "paragraph": "its commitment already encodes the counterparty.",
       "kind": "Undesired Behavior",
-      "line": 277,
+      "line": 288,
       "text": "If no input of the transaction spends a tracked Rating Right, the recognizer must emit **no fact**. A bare `REPID_RATING1` or `REPID_RATING2` `OP_RETURN` with no matching right is a non-fact (SPEC-008 RF-V03)."
     },
     {
@@ -2050,7 +2080,7 @@
       "section": "6. Participants Not Present in the Payload",
       "paragraph": "its commitment already encodes the counterparty.",
       "kind": "Events",
-      "line": 280,
+      "line": 291,
       "text": "When the Rating Right is resolved, the recognizer must remove that outpoint from the tracked set, because its spend implicitly burns the NFT and thereby consumes the right (SPEC-008 RF-O12, RF-V05)."
     },
     {
@@ -2061,7 +2091,7 @@
       "section": "6. Participants Not Present in the Payload",
       "paragraph": "its commitment already encodes the counterparty.",
       "kind": "Ubiquity",
-      "line": 283,
+      "line": 294,
       "text": "The recognizer must **not** read `raterPkh` or `rateePkh` from the `OP_RETURN` payload; a rating payload is `byte[1]` (or `byte[1] + byte[32]` under `REPID_RATING2`) and carries no addresses by design."
     },
     {
@@ -2072,7 +2102,7 @@
       "section": "7. Recognition Algorithm and Precedence",
       "paragraph": "recognizers can match the same transaction.",
       "kind": "Ubiquity",
-      "line": 291,
+      "line": 302,
       "text": "A conformant recognizer must apply recognizers in this fixed order and return the first fact produced, or no fact if none matches:"
     },
     {
@@ -2083,7 +2113,7 @@
       "section": "7. Recognition Algorithm and Precedence",
       "paragraph": "recognizers can match the same transaction.",
       "kind": "Events",
-      "line": 311,
+      "line": 322,
       "text": "The identity **spend** must be attempted before the identity **genesis**, because a collateral top-up re-emits the same NFT toward the same covenant and therefore has the same shape as a genesis; only the outpoint trail (was this outpoint already tracked?) distinguishes them (SPEC-008 RF-V07)."
     },
     {
@@ -2094,7 +2124,7 @@
       "section": "7. Recognition Algorithm and Precedence",
       "paragraph": "recognizers can match the same transaction.",
       "kind": "Ubiquity",
-      "line": 314,
+      "line": 325,
       "text": "A conformant recognizer must return **no fact** — not an error, not a partial result — for a transaction that matches no known shape (SPEC-008 RF-V03, RF-C03)."
     },
     {
@@ -2105,7 +2135,7 @@
       "section": "7. Recognition Algorithm and Precedence",
       "paragraph": "recognizers can match the same transaction.",
       "kind": "Ubiquity",
-      "line": 317,
+      "line": 328,
       "text": "Recognition must be **deterministic**: the same raw hex against the same index state must always yield the same result (SPEC-008 RF-V02)."
     },
     {
@@ -2116,7 +2146,7 @@
       "section": "7. Recognition Algorithm and Precedence",
       "paragraph": "recognizers can match the same transaction.",
       "kind": "Ubiquity",
-      "line": 320,
+      "line": 331,
       "text": "A conformant recognizer must not run the VM and must not re-validate signatures; it must reconstruct from the raw hex alone (SPEC-008 RF-V01)."
     },
     {
@@ -2127,7 +2157,7 @@
       "section": "8. Indexer State Transitions",
       "paragraph": "the small state the chain does not keep, or later facts cannot be validated.",
       "kind": "Events",
-      "line": 329,
+      "line": 340,
       "text": "On `IDENTITY_GENESIS` in vault form, the indexer must track the vault outpoint `txid:0` with `ownerPkh`, `identityCategory` and `collateral`."
     },
     {
@@ -2138,7 +2168,7 @@
       "section": "8. Indexer State Transitions",
       "paragraph": "the small state the chain does not keep, or later facts cannot be validated.",
       "kind": "Events",
-      "line": 331,
+      "line": 342,
       "text": "On `IDENTITY_COLLATERAL_TOP_UP`, the indexer must move the tracking from the spent outpoint to the new vault outpoint."
     },
     {
@@ -2149,7 +2179,7 @@
       "section": "8. Indexer State Transitions",
       "paragraph": "the small state the chain does not keep, or later facts cannot be validated.",
       "kind": "Events",
-      "line": 333,
+      "line": 344,
       "text": "On `IDENTITY_BURNED`, the indexer must remove the tracked vault outpoint."
     },
     {
@@ -2160,7 +2190,7 @@
       "section": "8. Indexer State Transitions",
       "paragraph": "the small state the chain does not keep, or later facts cannot be validated.",
       "kind": "Events",
-      "line": 336,
+      "line": 347,
       "text": "On `RECEIPT_GENESIS`, the indexer must track both Rating Right outpoints (`txid:1`, `txid:2`) with their `ownerPkh`/`ratesPkh`, and must track the Receipt's `txid` with its owner."
     },
     {
@@ -2171,7 +2201,7 @@
       "section": "8. Indexer State Transitions",
       "paragraph": "the small state the chain does not keep, or later facts cannot be validated.",
       "kind": "Events",
-      "line": 341,
+      "line": 352,
       "text": "On `RECEIPT_GENESIS`, when the first output's commitment carries an interaction context (RF-W73), the indexer must also retain it (`interactionCategory`, `roleA`, `roleB`, `contextHash`) alongside the Receipt, because the self-corroboration rule (RF-W71) and any later read of the context depend on it (SPEC-005 RF-23/RF-27)."
     },
     {
@@ -2182,7 +2212,7 @@
       "section": "8. Indexer State Transitions",
       "paragraph": "the small state the chain does not keep, or later facts cannot be validated.",
       "kind": "Events",
-      "line": 343,
+      "line": 354,
       "text": "On `RATING_ISSUED`, the indexer must remove the consumed Rating Right outpoint."
     },
     {
@@ -2193,7 +2223,7 @@
       "section": "8. Indexer State Transitions",
       "paragraph": "the small state the chain does not keep, or later facts cannot be validated.",
       "kind": "Undesired Behavior",
-      "line": 347,
+      "line": 358,
       "text": "If a collateral fact does not preserve the NFT category and commitment, or if the new collateral is lower than the registered one, the indexer must emit the fact with `valid: false` and must not advance the tracking to an invalid state (SPEC-008 RF-V09)."
     },
     {
@@ -2204,7 +2234,7 @@
       "section": "8. Indexer State Transitions",
       "paragraph": "the small state the chain does not keep, or later facts cannot be validated.",
       "kind": "Ubiquity",
-      "line": 350,
+      "line": 361,
       "text": "The indexer must persist this state so that recognition survives a process restart (SPEC-008 RF-V10). The reference implementation uses a local JSON file via `createJsonFileStore`."
     },
     {
@@ -2215,7 +2245,7 @@
       "section": "8. Indexer State Transitions",
       "paragraph": "the small state the chain does not keep, or later facts cannot be validated.",
       "kind": "Events",
-      "line": 355,
+      "line": 366,
       "text": "On `RATING_RETRACTION`, the indexer must add the referenced rating to the **retracted set** (SPEC-005 RF-27) so that a repeated retraction of the same rating is marked invalid deterministically (RF-W70). The retraction must not remove any tracking: the rating's Rating Right outpoint is already consumed by its own spend."
     },
     {
@@ -2226,7 +2256,7 @@
       "section": "9.1 `IDENTITY_GENESIS`",
       "paragraph": "",
       "kind": "Events",
-      "line": 373,
+      "line": 384,
       "text": "An identity genesis must have output 0 carrying an NFT with `capability = none` and `token.amount = 0`, and must have **one** output (legacy form) or **two** (vault form); any other output count must produce no fact. In the two-output form, output 1 must be a **tokenless** P2PKH."
     },
     {
@@ -2237,7 +2267,7 @@
       "section": "9.1 `IDENTITY_GENESIS`",
       "paragraph": "",
       "kind": "Events",
-      "line": 375,
+      "line": 386,
       "text": "In the legacy form the `ownerPkh` must be read from the P2PKH locking bytecode of output 0."
     },
     {
@@ -2248,7 +2278,7 @@
       "section": "9.1 `IDENTITY_GENESIS`",
       "paragraph": "",
       "kind": "Events",
-      "line": 379,
+      "line": 390,
       "text": "In the vault form, the NFT commitment must be exactly 20 bytes and must equal the `ownerPkh`; the `OP_RETURN`-free output 1 change must return to that same `ownerPkh`; `collateral` is the satoshi value of output 0 and `identityOutpoint` is `txid:0`."
     },
     {
@@ -2259,7 +2289,7 @@
       "section": "9.2 `RECEIPT_GENESIS`",
       "paragraph": "",
       "kind": "Events",
-      "line": 385,
+      "line": 396,
       "text": "A receipt genesis must have **three** or **four** outputs; in the four-output form, output 3 must be a **tokenless** P2PKH change. A fourth output carrying a token is not a change and must not be recognized."
     },
     {
@@ -2270,7 +2300,7 @@
       "section": "9.2 `RECEIPT_GENESIS`",
       "paragraph": "",
       "kind": "Events",
-      "line": 387,
+      "line": 398,
       "text": "Outputs 0, 1 and 2 must each carry an NFT with `capability = none` and `token.amount = 0`, all three sharing **one** category."
     },
     {
@@ -2281,7 +2311,7 @@
       "section": "9.2 `RECEIPT_GENESIS`",
       "paragraph": "",
       "kind": "Events",
-      "line": 393,
+      "line": 404,
       "text": "Output 0 (the Receipt) must have an **empty** commitment (legacy form) or a 4-byte/36-byte **interaction context** commitment (RF-W73), and be locked to `partyA`'s P2PKH; outputs 1 and 2 (the Rating Rights) must each have a **non-empty** commitment. The commitments must be the **cross** pair: the Rating Right in output 1 commits to `partyB`'s `pkh` and the one in output 2 to `partyA`'s `pkh`; otherwise no fact."
     },
     {
@@ -2292,7 +2322,7 @@
       "section": "9.2 `RECEIPT_GENESIS`",
       "paragraph": "",
       "kind": "Events",
-      "line": 400,
+      "line": 411,
       "text": "Outputs 1 and 2 must be locked to **two different** P2PKH addresses; a receipt genesis whose Rating Rights name the same party must not be recognized. The cross pair of RF-W40 does not imply this on its own: when both parties are one address, each commitment correctly names the other, so RF-W40 is satisfied by a self-receipt. This is a fact about the outputs and is required regardless of whether binding verification is applied (SPEC-008 RF-O821)."
     },
     {
@@ -2303,7 +2333,7 @@
       "section": "9.2 `RECEIPT_GENESIS`",
       "paragraph": "",
       "kind": "Events",
-      "line": 409,
+      "line": 420,
       "text": "Under `0.3.0`, outputs 1 and 2 (the Rating Rights) must be locked to a **P2SH32** output (`OP_HASH256 <32> OP_EQUAL`), not to P2PKH, and that hash must be the hash of `RatingRightVault` instantiated with the `0x14` constructor prefix and one `bytes20` argument, the holder's `pkh` (SPEC-008 RF-O822/RF-O825). P2SH32 is the form the CashScript compiler emits for a contract address; a P2PKH right, or a P2SH20 one, is the `0.2.x` form and must not be recognized under `0.3.0` (RF-W57). Because a P2SH output carries only a hash, the holder is not on chain at genesis: it is derived from output 0 (a P2PKH to partyA) and the two cross-referencing NFT commitments."
     },
     {
@@ -2314,7 +2344,7 @@
       "section": "9.2 `RECEIPT_GENESIS`",
       "paragraph": "",
       "kind": "Events",
-      "line": 416,
+      "line": 427,
       "text": "A spend of a tracked Rating Right must be recognized as `RATING_ISSUED` only where the spent outpoint was one registered as a covenant-locked right (RF-W58) **and** the redeem script revealed by that input satisfies binding verification against the canonical `RatingRightVault` bytecode instantiated with that holder's `pkh` (RF-W47). A failed verification yields no fact (RF-W49), not an unbound one: the \"recreate the NFT and rate again\" shape is exactly what must not be publishable."
     },
     {
@@ -2325,7 +2355,7 @@
       "section": "9.2 `RECEIPT_GENESIS`",
       "paragraph": "",
       "kind": "Events",
-      "line": 427,
+      "line": 438,
       "text": "A context commitment on output 0 — 4 bytes (`0x10 · category · roleA · roleB`) or 36 bytes (`0x11 · category · roleA · roleB · contextHash`) — must be decoded into the `receiptContext` (`interactionCategory`, `roleA`, `roleB`, and `contextHash` for the 36-byte form). The format byte must have high nibble `0x01` and a low nibble whose only defined flag is the `HAS_HASH` bit 0 (so exactly `0x10` and `0x11` are valid); any other value — including a reserved flag or a length of 1–3, 5–35 or 37+ bytes, and a 36-byte commitment without `HAS_HASH` — must produce **no fact** (tolerant reading: only the shape that is one of the two fixed forms is a fact). Unknown `category` or `role` bytes stay on the fact raw: they are valid facts whose meaning is application-level (SPEC-008 RF-O10)."
     },
     {
@@ -2336,7 +2366,7 @@
       "section": "10. Conformance",
       "paragraph": "",
       "kind": "Ubiquity",
-      "line": 434,
+      "line": 445,
       "text": "A **recognition-conformant** implementation must satisfy §3, §4, §5, §6, §7, §8 and §9: the same raw hex against the same index state must produce the same fact, with the same field values, the same `valid` result, and the same state transitions as the reference implementation."
     },
     {
@@ -2347,7 +2377,7 @@
       "section": "10. Conformance",
       "paragraph": "",
       "kind": "Ubiquity",
-      "line": 437,
+      "line": 448,
       "text": "An implementation must not declare recognition conformity if it accepts a push encoding rejected by §3, a payload length rejected by §4, or a `RATING_ISSUED` without a tracked Rating Right."
     },
     {
@@ -2358,7 +2388,7 @@
       "section": "10. Conformance",
       "paragraph": "",
       "kind": "Ubiquity",
-      "line": 440,
+      "line": 451,
       "text": "Where an implementation deviates from the reference in a **non-normative** layer (storage engine, network, user interface, reputation interpretation), the deviation must not change recognition results."
     },
     {
@@ -2369,7 +2399,7 @@
       "section": "10. Conformance",
       "paragraph": "",
       "kind": "Ubiquity",
-      "line": 442,
+      "line": 453,
       "text": "Conformity must be demonstrated with real executable evidence, not with description (Constitution Article 3, SPEC-008 RF-C05)."
     },
     {
@@ -2380,7 +2410,7 @@
       "section": "12.1 Why a comparison is possible at all",
       "paragraph": "the expected script is fully determined.",
       "kind": "Options",
-      "line": 542,
+      "line": 553,
       "text": "An implementation **MAY** verify that a covenant-backed fact was produced by the canonical covenant. This verification is **optional** and is not part of recognition conformity (RF-W41). A recognizer that does not apply it is unaffected by this section, and remains limited by §11 as that section states."
     },
     {
@@ -2391,7 +2421,7 @@
       "section": "12.2 The deployed script layout",
       "paragraph": "",
       "kind": "Ubiquity",
-      "line": 552,
+      "line": 563,
       "text": "Where an implementation applies binding verification, the expected redeem script **MUST** be reconstructed as the canonical bytecode of the named covenant preceded by its serialized constructor arguments, each argument introduced by its own minimal push and in **reverse declaration order** (the stack is LIFO), and **MUST NOT** be compared against a single hard-coded script hash, because every deployment has a different one. An implementation **MUST NOT** derive the expected script from the bytes it is verifying."
     },
     {
@@ -2402,7 +2432,7 @@
       "section": "12.2 The deployed script layout",
       "paragraph": "",
       "kind": "Options",
-      "line": 562,
+      "line": 573,
       "text": "Where an implementation applies binding verification, the script hash **MAY** be committed in either of the two P2SH forms — a 35-byte `OP_HASH256 <32> OP_EQUAL` or a 23-byte `OP_HASH160 <20> OP_EQUAL` — and the implementation **MUST** select the hash function from the width it actually found. It **MUST NOT** assume one form and silently fail on the other."
     },
     {
@@ -2413,7 +2443,7 @@
       "section": "12.2 The deployed script layout",
       "paragraph": "",
       "kind": "Undesired Behavior",
-      "line": 566,
+      "line": 577,
       "text": "If an implementation applies binding verification and the covenant-backed bytes do not match the canonical covenant, then it **MUST** emit **no fact** (SPEC-008 RF-V03, RF-C03) — not an error, not a partial result, and **not** a fact marked `valid: false`."
     },
     {
@@ -2424,7 +2454,7 @@
       "section": "12.2 The deployed script layout",
       "paragraph": "",
       "kind": "Prohibition",
-      "line": 578,
+      "line": 589,
       "text": "An implementation that applies binding verification **MUST NOT** require it of `TRUST_LINK` or `PLATFORM_CONFIRMATION`. Those two are plain P2PKH spends carrying an `OP_RETURN`, and they have no covenant to check. That is correct rather than a gap: they are unilateral and need no authorization beyond the spender's own signature."
     },
     {
@@ -2435,7 +2465,7 @@
       "section": "12.3 Which version's bytecode",
       "paragraph": "for every later one. Nothing on chain says which version minted it.",
       "kind": "Prohibition",
-      "line": 600,
+      "line": 611,
       "text": "An implementation that applies binding verification **MUST** compare the revealed script against the canonical bytecode of the single protocol version it implements, and **MUST NOT** widen the comparison to the bytecodes of other versions in order to obtain a match. The applicable version is a property of the implementation, not something recovered from the transaction."
     },
     {
@@ -2446,7 +2476,7 @@
       "section": "12.3 Which version's bytecode",
       "paragraph": "for every later one. Nothing on chain says which version minted it.",
       "kind": "Undesired Behavior",
-      "line": 615,
+      "line": 626,
       "text": "Where a covenant-backed fact was minted under a protocol version whose canonical bytecode differs from the one the implementation implements, binding verification **MUST** emit **no fact** (RF-W49). The implementation **MUST NOT** report it as recognized-but-invalid, and **MUST NOT** present the mismatch as evidence that the transaction was forged, since a correct transaction from an earlier version produces the same bytes."
     },
     {
@@ -2457,7 +2487,7 @@
       "section": "12.3 Which version's bytecode",
       "paragraph": "for every later one. Nothing on chain says which version minted it.",
       "kind": "Ubiquity",
-      "line": 631,
+      "line": 642,
       "text": "Where an implementation supports **more than one version** of the same covenant — as a `0.4.0` implementation does for the identity vault, whose pre-`0.4.0` body (no burn delay) and `0.4.0` body (with the `age >= 144` burn gate) coexist — the applicable version for each deployed vault MUST be a declared fact of the implementation: configuration, or the version recorded when that identity's genesis was recognized. It MUST NOT be selected by trying each bytecode until one matches (extends RF-W56 to the same-covenant case). The second identity covenant body does not reopen RF-W56: it is recognized only through the declared set, never through trial matching (SPEC-008 RF-O831)."
     },
     {
@@ -2468,7 +2498,7 @@
       "section": "12.4 What binding does not establish",
       "paragraph": "the VM does, and the difference is stated rather than blurred.",
       "kind": "Prohibition",
-      "line": 641,
+      "line": 652,
       "text": "Binding verification **MUST NOT** be described as verifying signatures, validating scripts, or establishing that a transaction is valid in any sense beyond its bytes matching the canonical covenant. It does not run the VM (RF-W27) and re-checks nothing the network already enforced."
     },
     {
@@ -2479,7 +2509,7 @@
       "section": "12.4 What binding does not establish",
       "paragraph": "the VM does, and the difference is stated rather than blurred.",
       "kind": "Options",
-      "line": 646,
+      "line": 657,
       "text": "An implementation that establishes a RepID identity, a Receipt or Rating Rights (SPEC-008 RF-V12) **MUST** base that on binding, and **MUST NOT** base it on a shape match alone. A recognizer that does not apply this section may still report the shape, and must then be understood to make no claim about identities at all."
     },
     {
@@ -2490,7 +2520,7 @@
       "section": "12.4 What binding does not establish",
       "paragraph": "the VM does, and the difference is stated rather than blurred.",
       "kind": "Events",
-      "line": 651,
+      "line": 662,
       "text": "An `IDENTITY_GENESIS` in legacy form (SPEC-008 RF-V13) is **out of scope** for this section and **MUST NOT** be rejected by it. There is no covenant in that form, so there is nothing to bind, and the fact stays recognized exactly as §9.1 requires. An implementation that applies binding must therefore distinguish \"no covenant to check\" from \"covenant does not match\"."
     },
     {
@@ -2501,7 +2531,7 @@
       "section": "12.5 Conformance",
       "paragraph": "",
       "kind": "Options",
-      "line": 660,
+      "line": 671,
       "text": "An implementation **MAY** declare a **binding-verified** capability, separate from recognition conformity (RF-W41), asserting that it applies §12 to every fact that has a covenant behind it. It **MUST NOT** declare the capability while leaving any covenant-backed path unverified, and the declaration **MUST** be accompanied by the executable evidence required by RF-W44."
     }
   ]

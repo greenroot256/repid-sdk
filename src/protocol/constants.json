@@ -59,18 +59,19 @@
     "FORMAT_BYTE_CONTEXT": "0x10",
     "FORMAT_BYTE_CONTEXT_WITH_HASH": "0x11",
     "preimage": {
-      "$comment": "contextHash := SHA256('REPID-RCTX-V1' ‖ metadata). 'REPID-RCTX-V1' is 12 ASCII bytes (0x52455049442d524354582d5631). metadata is the app-defined UTF-8 payload agreed by both parties, delivered off-chain, never salted.",
+      "$comment": "The interaction contextHash has NO published preimage (SPEC-003 RF-08; decision P6 in audit/lote2/A-DECISIONES.md). This entry records only the byte-length fact of the prefix so a producer does not truncate it: 'REPID-RCTX-V1' is 13 ASCII bytes (0x52455049442d524354582d5631), corrected from an earlier 12-byte claim. No SHA-256 formula is defined over these bytes.",
       "prefix": "REPID-RCTX-V1",
-      "prefixBytes": 12
+      "prefixBytes": 13
     }
   },
 
   "commentHash": {
-    "$comment": "SPEC-004 RF-08/RF-09. REPID_RATING2 attaches a 32-byte commentHash to the score. The comment itself is never on-chain; hash fidelity is an off-chain claim. commentHash := SHA256('REPID-CMT-V1' ‖ raterPkh(20) ‖ saltLen(1 byte) ‖ salt ‖ comment), saltLen 16..32.",
+    "$comment": "SPEC-004 RF-08/RF-09/RF-10. REPID_RATING2 attaches a 32-byte commentHash to the score. The comment itself is never on-chain; hash fidelity is an off-chain claim. commentHash := SHA256('REPID-CMT-V1' ‖ receiptCategory(32, display order, the Receipt the rating belongs to) ‖ raterPkh(20) ‖ saltLen(1 byte) ‖ salt ‖ comment), saltLen 16..32.",
     "lengthBytes": 32,
     "preimage": {
       "prefix": "REPID-CMT-V1",
       "prefixBytes": 12,
+      "RECEIPT_CATEGORY_LENGTH": 32,
       "SALT_MIN_LENGTH": 16,
       "SALT_MAX_LENGTH": 32
     }
@@ -96,7 +97,7 @@
       "fingerprint": "523dc5a28a46ebc07751512d900460de973474f3c1783ee9795d879e96d20cc6"
     },
     "identityVault": {
-      "$comment": "Versioned covenant registry since 0.4.0. `version` names the body carried by the flat fields, which stay the 0.3.0 body; `versions` maps each protocol version to the covenant source, artifact and recorded fingerprint. 0.3.0 is frozen (its burn path has no delay), 0.4.0 adds `require(this.age >= 144)` (SPEC-008 RF-O831, `identityVault.minBurnDelayBlocks`). Built by tools/build-covenant-bytecode.mjs and checked by tools/check-artifacts.mjs.",
+      "$comment": "Versioned covenant registry since 0.4.0. `version` names the body carried by the flat fields, which stay the 0.3.0 body; `versions` maps each protocol version to the covenant source, artifact and recorded fingerprint. 0.3.0 is frozen (its burn path has no delay), 0.4.0 adds `require(this.age >= 144)` (SPEC-008 RF-O831, `identityVault.minBurnDelayBlocks`). 0.5.0 changes no covenant, so it records the 0.4.0 body under its own name: an implementation that declares 0.5.0 has canonical bytes to bind against without trial matching (SPEC-009 RF-W56/RF-W76). Built by tools/build-covenant-bytecode.mjs and checked by tools/check-artifacts.mjs.",
       "version": "0.3.0",
       "versions": {
         "0.3.0": {
@@ -105,6 +106,11 @@
           "fingerprint": "e035cb7ba3e01b88cfd79541a080a8956137ed98dbac9dd4a49a24ed485adf46"
         },
         "0.4.0": {
+          "source": "contracts/identity_vault.cash",
+          "artifact": "artifacts/identity_vault_0_4_0.json",
+          "fingerprint": "054e4c9df4556de3f984f2385e4bd26ece91f5bb6ff4f927a7c02ae51df9aa65"
+        },
+        "0.5.0": {
           "source": "contracts/identity_vault.cash",
           "artifact": "artifacts/identity_vault_0_4_0.json",
           "fingerprint": "054e4c9df4556de3f984f2385e4bd26ece91f5bb6ff4f927a7c02ae51df9aa65"

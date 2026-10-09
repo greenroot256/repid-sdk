@@ -72,7 +72,9 @@ const RATING_RIGHT = covenantBytecode.contracts.ratingRight as CanonicalCovenant
  *
  * The vault is the one covenant with two coexisting bodies since `0.4.0`: the
  * pre-`0.4.0` one, with no burn delay, and the `0.4.0` one that gates burning
- * behind `require(this.age >= 144)` (SPEC-008 RF-O831). SPEC-009 RF-W76 forbids
+ * behind `require(this.age >= 144)` (SPEC-008 RF-O831). `0.5.0` changes no
+ * covenant, so the registry records the `0.4.0` body under it as well and a
+ * deployment bound against either declares the same bytes. SPEC-009 RF-W76 forbids
  * selecting a body by trial matching against the bytes under verification, so
  * this registry is derived from the declared set and nothing is ever added to it
  * from a transaction. A declared version that ships no compiled body fails at

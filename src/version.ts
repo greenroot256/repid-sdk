@@ -28,13 +28,25 @@ export const SDK_VERSION = '0.1.0';
 /**
  * The protocol versions this build implements, as stated by SPEC-010 §5.
  *
- * Since task E the declared set is `0.3.0` and `0.4.0`, and this is the case
+ * Since task E the declared set was `0.3.0` and `0.4.0`, and this is the case
  * SPEC-010 §4.1 calls a *superset, not a replacement*. `0.4.0` changes no rule
  * that reads a `0.3.0` byte: it adds the identity-vault burn-delay body, the
  * `REPID_RATING2` comment hash, the `REPID_RETRACT1` retraction and the optional
  * interaction context in the Receipt's NFT commitment. The same bytes that
  * produced a fact under `0.3.0` produce the same fact under `0.4.0`, so one
  * recognizer reads both eras identically and can honestly claim both versions.
+ *
+ * `0.5.0` is the same kind of superset over `0.4.0`, added deliberately in this
+ * batch. Its only normative change is the *publisher-facing* layout of the
+ * `commentHash` preimage, which binds the utterance to its Receipt by hashing
+ * that Receipt's `receiptCategory` (SPEC-009 §4.2, SPEC-004 RF-10), and the
+ * permanent removal of any published preimage for the interaction `contextHash`
+ * (SPEC-004 RF-12). None of that changes a single byte this recognizer reads:
+ * `commentHash` and `contextHash` are reported opaquely, exactly as spent, and
+ * the Receipt's NFT commitment keeps the `0x10`/`0x11` forms. The identity
+ * vault body is also unchanged, so the protocol registry records the `0.4.0`
+ * body under `0.5.0` — this build binds a `0.5.0` deployment against those same
+ * bytes by declared set, never by trial matching.
  *
  * That is why the versions here stop at a deliberate boundary. `0.1.0` and
  * `0.2.0` are *not* addable the same way: at `0.2.0` a receipt genesis whose
@@ -50,7 +62,7 @@ export const SDK_VERSION = '0.1.0';
  * versions and never by trial matching — see `src/recognize.ts`, which derives
  * the accepted bodies from this list.
  */
-export const SUPPORTED_PROTOCOL_VERSIONS: readonly string[] = ['0.3.0', '0.4.0'];
+export const SUPPORTED_PROTOCOL_VERSIONS: readonly string[] = ['0.3.0', '0.4.0', '0.5.0'];
 
 /**
  * Fails loudly when a protocol version is not one this build implements.
